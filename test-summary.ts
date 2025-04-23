@@ -1,5 +1,5 @@
 const fs = require('fs');
-const results = JSON.parse(fs.readFileSync('playwright-report.json', 'utf-8'));
+const results = JSON.parse(fs.readFileSync('test-reports/playwright-report.json', 'utf-8'));
 
 const stats = {
   passed: 0,

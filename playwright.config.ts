@@ -27,7 +27,6 @@ export default defineConfig({
   reporter: [
     ['html', { outputFolder: path.resolve('test-reports/playwright-report') }], 
     ['json', { outputFile: path.resolve('test-reports/playwright-report.json')}],
-    // ['./ctrf-reporter.ts'],
     ['playwright-ctrf-json-reporter', {}]
   ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
