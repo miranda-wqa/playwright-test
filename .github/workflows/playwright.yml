@@ -9,6 +9,7 @@ on:
 
 jobs:
   playwright-tests:
+    name: 🎭 Playwright Acceptance Tests
     timeout-minutes: 5
     runs-on: ubuntu-latest
     steps:
