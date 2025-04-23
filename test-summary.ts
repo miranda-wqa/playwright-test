@@ -43,7 +43,7 @@ const html = `
     <th>Results</th>
     <th>Passed ✅</th>
     <th>Failed ❌</th>
-    <th>Skipped ↩️</th>
+    <th>Skipped ⏭️</th>
     <th>Duration ⏱️</th>
   </tr>
   <tr>

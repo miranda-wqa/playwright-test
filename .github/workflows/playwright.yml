@@ -47,6 +47,7 @@ jobs:
       with:
         report-path: './ctrf/*.json'
         summary-report: true
+        # test-report: true
       if: always()
 
     - name: 🎭 Add Playwright Summary to Job
