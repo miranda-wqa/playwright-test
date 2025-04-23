@@ -63,18 +63,18 @@ jobs:
           path: test-reports/monocart/
           retention-days: 1
 
-      - name: 🖥️ Install CTRF CLI
-        run: npm install -g github-actions-ctrf
+      # - name: 🖥️ Install CTRF CLI
+      #   run: npm install -g github-actions-ctrf
 
-      - name: 📑 Publish Test Summary Results
-        uses: ctrf-io/github-test-reporter@v1
-        with:
-          report-path: './ctrf/*.json'
-          summary-report: true
-          test-report: true
-        if: always()
+      # - name: 📑 Publish CTRF Test Summary Results
+      #   uses: ctrf-io/github-test-reporter@v1
+      #   with:
+      #     report-path: './ctrf/*.json'
+      #     summary-report: true
+      #     test-report: true
+      #   if: always()
 
-      - name: 🎭 Add Playwright Summary to Job
+      - name: 🎭 Add Test Summary HTML Table
         run: node ./test-summary.ts
 
   deploy:
