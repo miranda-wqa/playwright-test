@@ -31,6 +31,7 @@ function parseSuites(suites) {
 
 parseSuites(results.suites);
 
+const totalTests = stats.passed + stats.failed + stats.skipped;
 const seconds = (stats.duration / 1000).toFixed(2);
 
 // Determine the result symbol
@@ -41,6 +42,7 @@ const html = `
 <table>
   <tr>
     <th>Results</th>
+    <th>Tests 📝</th>
     <th>Passed ✅</th>
     <th>Failed ❌</th>
     <th>Skipped ⏭️</th>
@@ -48,6 +50,7 @@ const html = `
   </tr>
   <tr>
     <td style="font-size: 1.5rem;">${resultSymbol}</td>
+    <td>${totalTests}</td>
     <td>${stats.passed}</td>
     <td>${stats.failed}</td>
     <td>${stats.skipped}</td>
