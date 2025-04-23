@@ -78,7 +78,7 @@ jobs:
         run: node ./test-summary.ts
 
   deploy:
-    name: 🚀 Deploy Playwright Report to GitHub Pages
+    name: 🚀 Deploy Report to GitHub Pages
     needs: playwright-tests
     runs-on: ubuntu-latest
     environment:
