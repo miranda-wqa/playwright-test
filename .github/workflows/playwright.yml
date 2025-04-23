@@ -42,7 +42,12 @@ jobs:
       run: npm install -g github-actions-ctrf
 
     - name: 📑 Publish Test Summary Results
-      run: npx github-actions-ctrf ctrf/ctrf-report.json
+      # run: npx github-actions-ctrf ctrf/ctrf-report.json
+      uses: ctrf-io/github-test-reporter@v1
+      with:
+        report-path: './ctrf/*.json'
+        summary-report: true
+      if: always()
 
     - name: 🎭 Add Playwright Summary to Job
       run: node ./test-summary.ts
