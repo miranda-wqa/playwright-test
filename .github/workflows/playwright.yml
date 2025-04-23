@@ -6,7 +6,7 @@ on:
     branches: [ main, master ]
   workflow_dispatch:  # 👈 this makes the action manually triggerable
 jobs:
-  test:
+  playwright-tests:
     timeout-minutes: 5
     runs-on: ubuntu-latest
     steps:
