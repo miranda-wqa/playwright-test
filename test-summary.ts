@@ -33,16 +33,21 @@ parseSuites(results.suites);
 
 const seconds = (stats.duration / 1000).toFixed(2);
 
+// Determine the result symbol
+const resultSymbol = stats.failed > 0 ? '🔴' : '🟢';
+
 const html = `
 <h2>Playwright Results</h2>
 <table>
   <tr>
+    <th>Results</th>
     <th>Passed ✅</th>
     <th>Failed ❌</th>
     <th>Skipped ↩️</th>
     <th>Duration ⏱️</th>
   </tr>
   <tr>
+    <td style="font-size: 1.5rem;">${resultSymbol}</td>
     <td>${stats.passed}</td>
     <td>${stats.failed}</td>
     <td>${stats.skipped}</td>
