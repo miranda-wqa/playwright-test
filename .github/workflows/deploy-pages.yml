@@ -1,5 +1,5 @@
 # 🚀 Simple workflow for deploying static content to GitHub Pages
-name: 🚀 Deploy Static Content to GitHub Pages
+name: 🚀 Deploy Report to GitHub Pages
 
 on:
   # 📦 Trigger on pushes to the main branch
