@@ -85,7 +85,7 @@ jobs:
       - name: 📦 Upload HTML Report to Pages
         uses: actions/upload-pages-artifact@v3
         with:
-          path: playwright-report
+          path: test-reports/playwright-report
 
       - name: 🚀 Deploy to GitHub Pages
         id: deployment
