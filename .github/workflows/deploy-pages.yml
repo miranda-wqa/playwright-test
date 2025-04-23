@@ -39,10 +39,8 @@ jobs:
       - name: 📦 Upload Static Files
         uses: actions/upload-pages-artifact@v3
         with:
-          path: 'test-reports/playwright-report/index.html' # 📂 Upload entire repository
+          path: '.' # 📂 Upload entire repository
 
       - name: 🚀 Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
-        
