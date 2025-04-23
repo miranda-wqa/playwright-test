@@ -29,19 +29,20 @@ jobs:
     - name: 🧪 Run Playwright tests
       run: npx playwright test --project=chromium -g "test-1.spec.ts"
       
-    - name: 📦 Archive Test Results
-      if: success() || failure()    
-      uses: actions/upload-artifact@v4
-      with:
-        name: playwright-report
-        path: test-reports/playwright-report/
-        retention-days: 1
+    # - name: 📦 Archive Test Results
+    #   if: success() || failure()    
+    #   uses: actions/upload-artifact@v4
+    #   with:
+    #     name: playwright-report
+    #     path: test-reports/playwright-report/
+    #     retention-days: 1
         
     - name: 🖥️ Install CTRF CLI
       run: npm install -g github-actions-ctrf
 
-    - name: Check if ctrf-report.json exists
-      run: ls -l test-reports/
-
     - name: 📑 Publish Test Summary Results
       run: npx github-actions-ctrf ctrf/ctrf-report.json
+
+    - name: 🎭 Add Playwright Summary to Job
+      run: node playwright-summary.ts
+
