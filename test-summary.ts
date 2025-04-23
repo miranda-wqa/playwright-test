@@ -8,16 +8,28 @@ const stats = {
   duration: 0,
 };
 
-for (const result of results.suites.flatMap(s => s.suites || [])) {
-  for (const test of result.specs.flatMap(s => s.tests)) {
-    for (const run of test.results) {
-      stats.duration += run.duration;
-      if (run.status === 'passed') stats.passed++;
-      else if (run.status === 'skipped') stats.skipped++;
-      else stats.failed++;
+function parseSuites(suites) {
+  for (const suite of suites) {
+    if (suite.suites) {
+      parseSuites(suite.suites);
+    }
+
+    if (suite.specs) {
+      for (const spec of suite.specs) {
+        for (const test of spec.tests) {
+          for (const run of test.results) {
+            stats.duration += run.duration || 0;
+            if (run.status === 'passed') stats.passed++;
+            else if (run.status === 'skipped') stats.skipped++;
+            else stats.failed++;
+          }
+        }
+      }
     }
   }
 }
+
+parseSuites(results.suites);
 
 const seconds = (stats.duration / 1000).toFixed(2);
 
