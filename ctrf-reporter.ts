@@ -22,14 +22,12 @@ import {
   
   interface CtrfReport {
     version: string;
-    type: string;
     tests: CtrfTestResult[];
   }
   
   class CtrfReporter implements Reporter {
     private report: CtrfReport = {
       version: '1.0',
-      type: 'test',
       tests: []
     };
   
