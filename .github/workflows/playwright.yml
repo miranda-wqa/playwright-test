@@ -9,7 +9,7 @@ on:
 
 jobs:
   playwright-tests:
-    name: 🎭 Playwright Acceptance Tests
+    name: 🎭 Playwright Tests
     timeout-minutes: 5
     runs-on: ubuntu-latest
     steps:
@@ -45,5 +45,5 @@ jobs:
       run: npx github-actions-ctrf ctrf/ctrf-report.json
 
     - name: 🎭 Add Playwright Summary to Job
-      run: node test-summary.ts
+      run: node ./test-summary.ts
 
