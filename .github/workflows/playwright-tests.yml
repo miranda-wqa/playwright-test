@@ -108,3 +108,9 @@ jobs:
         with:
           message: |
             ✅ Playwright report deployed: ${{ steps.deployment.outputs.page_url }}
+
+      - name: 🧹 Clean previous test results
+        run: rm -rf test-reports/playwright-report
+
+      - name: 📢 Show test completion message
+        run: echo "🎉 All Playwright tests completed!"
