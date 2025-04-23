@@ -44,5 +44,5 @@ jobs:
       run: npx github-actions-ctrf ctrf/ctrf-report.json
 
     - name: 🎭 Add Playwright Summary to Job
-      run: node playwright-summary.ts
+      run: node test-summary.ts
 
