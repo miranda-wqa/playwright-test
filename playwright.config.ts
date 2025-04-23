@@ -25,7 +25,8 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
-    ['html', { outputFolder: path.resolve('test-reports/playwright-report') }], 
+    ['html', { outputFolder: path.resolve('test-reports/playwright-report') }],
+    ['monocart-reporter', { outputFolder: path.resolve('test-reports/monocart')}],
     ['json', { outputFile: path.resolve('test-reports/playwright-report.json')}],
     ['playwright-ctrf-json-reporter', {}]
   ],

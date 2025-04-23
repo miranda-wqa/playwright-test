@@ -60,7 +60,7 @@ jobs:
         uses: actions/upload-artifact@v4.6.2
         with:
           name: playwright-report
-          path: test-reports/playwright-report/
+          path: test-reports/monocart/
           retention-days: 1
 
       - name: 🖥️ Install CTRF CLI
@@ -111,7 +111,7 @@ jobs:
             ✅ Playwright report deployed: ${{ steps.deployment.outputs.page_url }}
 
       - name: 🧹 Clean previous test results
-        run: rm -rf test-reports/playwright-report
+        run: rm -rf test-reports/
 
       - name: 📢 Show test completion message
         run: echo "🎉 All Playwright tests completed!"
