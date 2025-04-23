@@ -62,23 +62,6 @@ jobs:
       - name: 🎭 Add Playwright Summary to Job
         run: node ./test-summary.ts
 
-  deploy:
-    name: 🚀 Deploy Playwright Report to GitHub Pages
-    needs: playwright-tests
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: 📥 Checkout Code
-        uses: actions/checkout@v4
-
-      # - name: 📥 Download Playwright Report Artifact
-      #   uses: actions/download-artifact@v4
-      #   with:
-      #     name: playwright-report
-      #     path: report-to-publish
-
       - name: 🛠️ Setup GitHub Pages
         uses: actions/configure-pages@v5
 
@@ -90,3 +73,32 @@ jobs:
       - name: 🚀 Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  # deploy:
+  #   name: 🚀 Deploy Playwright Report to GitHub Pages
+  #   needs: playwright-tests
+  #   runs-on: ubuntu-latest
+  #   environment:
+  #     name: github-pages
+  #     url: ${{ steps.deployment.outputs.page_url }}
+  #   steps:
+  #     - name: 📥 Checkout Code
+  #       uses: actions/checkout@v4
+
+  #     - name: 📥 Download Playwright Report Artifact
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: playwright-report
+  #         path: report-to-publish
+
+  #     - name: 🛠️ Setup GitHub Pages
+  #       uses: actions/configure-pages@v5
+
+  #     - name: 📦 Upload HTML Report to Pages
+  #       uses: actions/upload-pages-artifact@v3
+  #       with:
+  #         path: report-to-publish
+
+  #     - name: 🚀 Deploy to GitHub Pages
+  #       id: deployment
+  #       uses: actions/deploy-pages@v4
