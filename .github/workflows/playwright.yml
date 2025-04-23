@@ -20,7 +20,7 @@ jobs:
       with:
         node-version: lts/*
       
-    - name: 📦 Install dependencies
+    - name: 🔧 Install dependencies
       run: npm ci
 
     - name: 🌐 Install Playwright Browsers
@@ -40,8 +40,8 @@ jobs:
     - name: 🖥️ Install CTRF CLI
       run: npm install -g github-actions-ctrf
 
-    - name: Check if json-report.json exists
+    - name: Check if ctrf-report.json exists
       run: ls -l test-reports/
 
     - name: 📑 Publish Test Summary Results
-      run: npx github-actions-ctrf test-reports/json-report.json
+      run: npx github-actions-ctrf test-reports/ctrf-report.json

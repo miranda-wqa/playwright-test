@@ -1,5 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 import path from 'path';
+import CtrfReporter from './ctrf-reporter';
 
 /**
  * Read environment variables from file.
@@ -26,6 +27,7 @@ export default defineConfig({
   reporter: [
     ['html', { outputFolder: path.resolve('test-reports/') }], 
     ['json', { outputFile: path.resolve('test-reports/json-report.json')}],
+    ['./ctrf-reporter.ts'],
   ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
