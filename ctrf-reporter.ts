@@ -35,7 +35,6 @@ import {
       // Initialize report
       this.report = {
         version: '1.0',
-        type: 'test',
         tests: []
       };
     }
