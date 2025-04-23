@@ -32,6 +32,11 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Check if the artifact exists
+        run: |
+            echo "Checking if artifact exists"
+            ls -la test-reports/playwright-report/
+
       - name: Download Playwright Report Artifact
         uses: actions/download-artifact@v2
         with:
@@ -44,7 +49,7 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: 'test-reports/playwright-report'
-          
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
