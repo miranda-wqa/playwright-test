@@ -75,7 +75,7 @@ jobs:
       #   if: always()
 
       - name: 🎭 Add Test Summary HTML Table
-        run: node ./test-summary.ts
+        run: node ./github-test-summary.ts
 
   deploy:
     name: 🚀 Deploy Report to GitHub Pages
