@@ -71,10 +71,6 @@ jobs:
         with:
           report-path: './ctrf/*.json'
           summary-report: true
-          test-report: true
-          title: 'Test Title'
-          pull-request-report: true
-          pull-request: true
         if: always()
           
       - name: 🎭 Add Test Summary HTML Table

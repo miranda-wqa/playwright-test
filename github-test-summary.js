@@ -60,7 +60,7 @@ const html = `
     <td>${seconds}s</td>
   </tr>
 </table>
-<p><a href="playwright-report/index.html">📊 Full HTML Report</a></p>
+<p><a href="test-reports/monocart/index.html">📊 Full HTML Report</a></p>
 `;
 
 fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, html);
