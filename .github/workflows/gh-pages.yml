@@ -25,7 +25,7 @@ jobs:
       - name: 📥 Checkout Code
         uses: actions/checkout@v4
 
-      - name: 🛠️ Setup Node.js
+      - name: 🚠 Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
@@ -37,7 +37,7 @@ jobs:
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-
-      
+
       - name: ♻️ Cache Playwright binaries
         uses: actions/cache@v4
         with:
@@ -52,7 +52,7 @@ jobs:
       - name: 🌐 Install Playwright Browsers
         run: npx playwright install --with-deps
 
-      - name: 🧪 Run Playwright tests
+      - name: 🧲 Run Playwright tests
         run: npx playwright test --project=chromium -g "test-1.spec.ts"
 
       - name: 📦 Archive Test Results
@@ -63,13 +63,13 @@ jobs:
           path: test-reports/monocart/
           retention-days: 1
 
-      - name: 🖥️ Install CTRF CLI
+      - name: 💽 Install CTRF CLI
         run: npm install -g github-actions-ctrf
 
       - name: 📑 Publish CTRF Test Summary Results
         run: npx github-actions-ctrf test-reports/ctrf/ctrf-report.json
         if: always()
-          
+
       - name: 🎭 Add Test Summary HTML Table
         if: always()
         run: node ./github-test-summary.js
@@ -79,40 +79,41 @@ jobs:
     needs: playwright-tests
     if: always()
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: 📥 Download Playwright Report Artifact
         uses: actions/download-artifact@v4
         with:
           name: playwright-report
-          path: report-to-publish
+          path: test-reports/monocart
 
-      - name: 🛠️ Setup GitHub Pages
-        uses: actions/configure-pages@v5
-
-      - name: 📦 Upload HTML Report to Pages
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: report-to-publish
+      - name: 📦 Move Monocart report to timestamped folder
+        run: |
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          mkdir -p reports/$TIMESTAMP
+          if [ -d test-reports/monocart ] && [ "$(ls -A test-reports/monocart)" ]; then
+            mv test-reports/monocart reports/$TIMESTAMP/
+            echo "REPORT_FOLDER=reports/$TIMESTAMP/monocart" >> $GITHUB_ENV
+          else
+            echo "❌ test-reports/monocart is missing or empty"
+            exit 1
+          fi
 
       - name: 🚀 Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-
-      - name: 📝 Write report URL in PR
-        if: github.event_name == 'pull_request'
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: peaceiris/actions-gh-pages@v3
         with:
-          message: |
-            ✅ Playwright report deployed: ${{ steps.deployment.outputs.page_url }}
-            
-      - name: 📝 Write report URL in Workflow Summary
-        run: echo "🎭 [View Playwright Execution Report 🔗](${{ steps.deployment.outputs.page_url }})" >> $GITHUB_STEP_SUMMARY
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: reports
+          publish_branch: gh-pages
+          keep_files: true
+          enable_jekyll: false
+          allow_empty_commit: true
+          force_orphan: false
 
-      - name: 🧹 Clean previous test results
-        run: rm -rf test-reports/
+      - name: 🔗 Comment Report URL
+        run: |
+          echo "✅ Report: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/$REPORT_FOLDER"
+        env:
+          REPORT_FOLDER: ${{ env.REPORT_FOLDER }}
 
       - name: 📢 Show test completion message
         run: echo "🎉 All Playwright tests completed!"
