@@ -116,7 +116,7 @@ jobs:
           TIMESTAMP=$(date +%Y%m%d-%H%M%S)
           mkdir -p reports/$TIMESTAMP
           if [ -d test-reports ] && [ "$(ls -A test-reports)" ]; then
-            mv test-reports/* reports/$TIMESTAMP
+            mv test-reports/monocart/* reports/$TIMESTAMP
             echo "REPORT_FOLDER=reports/$TIMESTAMP" >> $GITHUB_ENV
           else
             echo "❌ test-reports is missing or empty"
