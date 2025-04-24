@@ -1,31 +1,31 @@
-# Workflow to deploy the latest Playwright test report to GitHub Pages
-name: Deploy Playwright Report to GitHub Pages
+# 🚀 Workflow to deploy the latest Playwright test report to GitHub Pages
+name: Deploy Playwright Report to GitHub Pages 📊🌍
 
 on:
-  workflow_dispatch: # Manual trigger from GitHub Actions UI
+  workflow_dispatch: # 🔄 Manual trigger from GitHub Actions UI
 
 jobs:
   deploy:
-    name: Deploy to GitHub Pages
+    name: Deploy to GitHub Pages 📤🌐
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: 🧑‍💻 Checkout code
         uses: actions/checkout@v2
 
-      - name: Download Latest Playwright Report Artifact
+      - name: 📥 Download Latest Playwright Report Artifact
         uses: actions/download-artifact@v2
         with:
-          name: playwright-report  # Artifact name (same as uploaded in the first workflow)
+          name: playwright-report  # 📦 Artifact name (same as uploaded in the first workflow)
 
-      - name: Deploy Playwright Report to GitHub Pages
+      - name: 🚀 Deploy Playwright Report to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: playwright-report  # Path to the downloaded report
-          publish_branch: gh-pages       # The branch where the report will be published
-          allow_empty_commit: true       # Allow empty commits to be pushed when no changes occur
-          force_orphan: true             # Create a new orphan branch if necessary
-          keep_files: false             # Delete previous report files before pushing new ones
-          enable_jekyll: false           # Disable Jekyll for the repository if not using it
+          publish_dir: playwright-report  # 📂 Path to the downloaded report
+          publish_branch: gh-pages       # 🌿 The branch where the report will be published
+          allow_empty_commit: true       # ✅ Allow empty commits to be pushed when no changes occur
+          force_orphan: true             # 💡 Create a new orphan branch if necessary
+          keep_files: false             # ❌ Delete previous report files before pushing new ones
+          enable_jekyll: false           # 🚫 Disable Jekyll for the repository if not using it
 
           
