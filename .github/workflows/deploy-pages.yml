@@ -2,11 +2,20 @@
 name: 🌍 Deploy Playwright Report to GitHub Pages
 
 on:
+  # push:
+  #   branches: [main, master]
+  # pull_request:
+  #   branches: [main, master]
+
   workflow_dispatch: # 🔄 Manual trigger from GitHub Actions UI
   workflow_run:
     workflows: ["🎭 Run Playwright Tests"]  # 🔁 Name of playwright test workflow
     types:
       - completed
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
   deploy:
