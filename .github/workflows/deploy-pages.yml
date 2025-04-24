@@ -1,46 +1,31 @@
-# 🚀 Simple workflow for deploying static content to GitHub Pages
-name: 🚀 Deploy Report to GitHub Pages
+# Workflow to deploy the latest Playwright test report to GitHub Pages
+name: Deploy Playwright Report to GitHub Pages
 
 on:
-  # 📦 Trigger on pushes to the main branch
-  # push:
-  #   branches: ["main"]
-
-  # 👇 Allow manual trigger from Actions tab
-  workflow_dispatch:
-
-# 🔐 Set permissions for GitHub Pages deployment
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-# 🔄 Ensure one deployment runs at a time (no canceling in-progress runs)
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  workflow_dispatch: # Manual trigger from GitHub Actions UI
 
 jobs:
-  # 📤 Single job to handle deployment
   deploy:
-    name: 🌍 Deploy to GitHub Pages
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    name: Deploy to GitHub Pages
     runs-on: ubuntu-latest
-
     steps:
-      - name: 📥 Checkout Code
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-      - name: 🛠️ Setup GitHub Pages
-        uses: actions/configure-pages@v5
-
-      - name: 📦 Upload Static Files
-        uses: actions/upload-pages-artifact@v3
+      - name: Download Latest Playwright Report Artifact
+        uses: actions/download-artifact@v2
         with:
-          path: test-reports/playwright-report # 📂 Upload entire repository
+          name: playwright-report  # Artifact name (same as uploaded in the first workflow)
 
-      - name: 🚀 Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Deploy Playwright Report to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: playwright-report  # Path to the downloaded report
+          publish_branch: gh-pages       # The branch where the report will be published
+          allow_empty_commit: true       # Allow empty commits to be pushed when no changes occur
+          force_orphan: true             # Create a new orphan branch if necessary
+          keep_files: false             # Delete previous report files before pushing new ones
+          enable_jekyll: false           # Disable Jekyll for the repository if not using it
+
+          
