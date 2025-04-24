@@ -21,7 +21,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: playwright-report
-          path: playwright-report
+          path: test/reports/monocart
 
       - name: 📦 Move report to timestamped folder
         run: |
