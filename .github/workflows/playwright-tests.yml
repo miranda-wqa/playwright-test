@@ -75,7 +75,7 @@ jobs:
       #   if: always()
 
       - name: 🎭 Add Test Summary HTML Table
-        run: ts-node ./github-test-summary.ts
+        run: node ./github-test-summary.js
 
   deploy:
     name: 🚀 Deploy Report to GitHub Pages
@@ -103,7 +103,7 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-      - name: 💬 Comment report URL in PR
+      - name: 📝 Write report URL in PR
         if: github.event_name == 'pull_request'
         uses: marocchino/sticky-pull-request-comment@v2
         with:
