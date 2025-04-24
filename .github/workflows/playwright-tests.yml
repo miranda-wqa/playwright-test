@@ -111,18 +111,17 @@ jobs:
       # - name: 📝 Write report URL in Workflow Summary
       #   run: echo "🎭 [View Playwright Execution Report 🔗](${{ steps.deployment.outputs.page_url }})" >> $GITHUB_STEP_SUMMARY
 
-      - name: 📦 Move Playwright report to timestamped folder
+      - name: 📦 Move Monocart report to timestamped folder
         run: |
           TIMESTAMP=$(date +%Y%m%d-%H%M%S)
           mkdir -p reports/$TIMESTAMP
-          if [ -d test-reports ] && [ "$(ls -A test-reports)" ]; then
-            mv test-reports/monocart/* reports/$TIMESTAMP
-            echo "REPORT_FOLDER=reports/$TIMESTAMP" >> $GITHUB_ENV
+          if [ -d test-reports/monocart ] && [ "$(ls -A test-reports/monocart)" ]; then
+            mv test-reports/monocart reports/$TIMESTAMP/
+            echo "REPORT_FOLDER=reports/$TIMESTAMP/monocart" >> $GITHUB_ENV
           else
-            echo "❌ test-reports is missing or empty"
+            echo "❌ test-reports/monocart is missing or empty"
             exit 1
           fi
-
       - name: 🚀 Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
@@ -137,6 +136,8 @@ jobs:
       - name: 🔗 Comment Report URL
         run: |
           echo "✅ Report: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/$REPORT_FOLDER"
+        env:
+          REPORT_FOLDER: ${{ env.REPORT_FOLDER }}
 
       # - name: 🧹 Clean previous test results
       #   run: rm -rf test-reports/
