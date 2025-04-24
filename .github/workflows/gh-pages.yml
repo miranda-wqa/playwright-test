@@ -1,4 +1,4 @@
-name: 🎭 Run Playwright Tests
+name: 🎭 GH Pages
 
 on:
   push:
