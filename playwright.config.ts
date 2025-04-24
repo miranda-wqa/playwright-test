@@ -28,7 +28,7 @@ export default defineConfig({
     ['html', { outputFolder: path.resolve('test-reports/playwright-report') }],
     ['monocart-reporter', { outputFile: path.resolve('test-reports/monocart/index.html')}],
     ['json', { outputFile: path.resolve('test-reports/playwright-report.json')}],
-    ['playwright-ctrf-json-reporter', {}]
+    ['playwright-ctrf-json-reporter', {outputFile: 'ctrf-report.json', outputDir: path.resolve('test-reports/ctrf/')}]
   ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
