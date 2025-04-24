@@ -3,6 +3,10 @@ name: 🌍 Deploy Playwright Report to GitHub Pages
 
 on:
   workflow_dispatch: # 🔄 Manual trigger from GitHub Actions UI
+  workflow_run:
+    workflows: ["🎭 Run Playwright Tests"]  # 🔁 Name of playwright test workflow
+    types:
+      - completed
 
 jobs:
   deploy:
