@@ -98,7 +98,7 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./public
+          publish_dir: reports
           publish_branch: gh-pages
           keep_files: true
           enable_jekyll: false
@@ -107,7 +107,7 @@ jobs:
 
       - name: 🔗 Comment Report URL
         run: |
-          echo "✅ Report: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/$REPORT_FOLDER/index.html"
+            echo "✅ Report: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/$REPORT_FOLDER/index.html"
         env:
           REPORT_FOLDER: ${{ env.REPORT_FOLDER }}
 
