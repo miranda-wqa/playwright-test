@@ -115,7 +115,7 @@ jobs:
         run: |
           TIMESTAMP=$(date +%Y%m%d-%H%M%S)
           mkdir -p reports/$TIMESTAMP
-          if [ -d temp-report ] && [ "$(ls -A report-to-publish)" ]; then
+          if [ -d report-to-publish ] && [ "$(ls -A report-to-publish)" ]; then
             mv report-to-publish/* reports/$TIMESTAMP
             echo "REPORT_FOLDER=reports/$TIMESTAMP" >> $GITHUB_ENV
           else
