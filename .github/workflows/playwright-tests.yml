@@ -73,13 +73,6 @@ jobs:
           summary-report: true
           test-report: true
         if: always()
-
-      - name: 🧼 Remove CTRF Footer and Rewrite Summary
-        if: always()
-        run: |
-          grep -v 'Github Test Reporter by CTRF' $GITHUB_STEP_SUMMARY > summary_clean.md
-          echo "" > $GITHUB_STEP_SUMMARY
-          cat summary_clean.md >> $GITHUB_STEP_SUMMARY
           
       - name: 🎭 Add Test Summary HTML Table
         if: always()

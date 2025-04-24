@@ -25,6 +25,6 @@ test.skip('File 1: Test 5', async ({ page }) => {
   console.log(`${test.info().status?.toUpperCase()}`);
 });
 
-test.skip('File 1: Test 6', async ({ }) => {
+test('File 1: Test 6', async ({ }) => {
   throw new Error("This test failed on purpose!");
 });
