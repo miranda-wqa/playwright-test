@@ -103,17 +103,12 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-      # - name: 📝 Write report URL in PR
-      #   if: github.event_name == 'pull_request'
-      #   uses: marocchino/sticky-pull-request-comment@v2
-      #   with:
-      #     message: |
-      #       ✅ Playwright report deployed: ${{ steps.deployment.outputs.page_url }}
-
-      - name: Write URL in Summary
-        run: |
-          echo "## Playwright Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "https://${ORG_NAME}.github.io/${REPO_NAME}/" >> $GITHUB_STEP_SUMMARY
+      - name: 📝 Write report URL in PR
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          message: |
+            ✅ Playwright report deployed: ${{ steps.deployment.outputs.page_url }}
 
       - name: 🧹 Clean previous test results
         run: rm -rf test-reports/
