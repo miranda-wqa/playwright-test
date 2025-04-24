@@ -38,7 +38,7 @@ const seconds = (stats.duration / 1000).toFixed(2);
 const resultSymbol = stats.failed > 0 ? '🔴' : '🟢';
 
 const html = `
-<h2>Playwright Test Run Summary</h2>
+// <h2>Playwright Test Run Summary</h2>
 <table>
   <tr>
     <th>Results</th>
