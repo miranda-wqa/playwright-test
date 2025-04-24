@@ -59,17 +59,6 @@ jobs:
           path: test-reports/monocart/
           retention-days: 1
 
-      - name: 💽 Install CTRF CLI
-        run: npm install -g github-actions-ctrf
-
-      - name: 📑 Publish CTRF Test Summary Results
-        run: npx github-actions-ctrf test-reports/ctrf/ctrf-report.json
-        if: always()
-
-      - name: 🎭 Add Test Summary HTML Table
-        if: always()
-        run: node ./github-test-summary.js
-
   deploy:
     name: 📬 Upload Report
     needs: playwright-tests
@@ -82,13 +71,12 @@ jobs:
           name: playwright-report
           path: test-reports/monocart
 
-      - name: 📦 Move Monocart report to timestamped folder
+      - name: 📦 Move Monocart report to a fixed folder
         run: |
-          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-          mkdir -p reports/$TIMESTAMP
+          mkdir -p reports/monocart
           if [ -d test-reports/monocart ] && [ "$(ls -A test-reports/monocart)" ]; then
-            mv test-reports/monocart reports/$TIMESTAMP/
-            echo "REPORT_FOLDER=reports/$TIMESTAMP/monocart" >> $GITHUB_ENV
+            mv test-reports/monocart/* reports/monocart/
+            echo "REPORT_FOLDER=reports/monocart" >> $GITHUB_ENV
           else
             echo "❌ test-reports/monocart is missing or empty"
             exit 1
