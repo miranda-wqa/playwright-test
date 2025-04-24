@@ -111,12 +111,17 @@ jobs:
       # - name: 📝 Write report URL in Workflow Summary
       #   run: echo "🎭 [View Playwright Execution Report 🔗](${{ steps.deployment.outputs.page_url }})" >> $GITHUB_STEP_SUMMARY
 
-      - name: 🧾 Rename Report Folder
+      - name: 📦 Move Playwright report to timestamped folder
         run: |
           TIMESTAMP=$(date +%Y%m%d-%H%M%S)
           mkdir -p reports/$TIMESTAMP
-          mv temp-report/* reports/$TIMESTAMP
-          echo "REPORT_FOLDER=reports/$TIMESTAMP" >> $GITHUB_ENV
+          if [ -d temp-report ] && [ "$(ls -A temp-report)" ]; then
+            mv temp-report/* reports/$TIMESTAMP
+            echo "REPORT_FOLDER=reports/$TIMESTAMP" >> $GITHUB_ENV
+          else
+            echo "❌ temp-report is missing or empty"
+            exit 1
+          fi
 
       - name: 🚀 Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
