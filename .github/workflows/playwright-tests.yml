@@ -80,6 +80,7 @@ jobs:
   deploy:
     name: 📬 Upload Report
     needs: playwright-tests
+    if: always()
     runs-on: ubuntu-latest
     environment:
       name: github-pages
