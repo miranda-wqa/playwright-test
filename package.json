@@ -11,6 +11,8 @@
     "@playwright/test": "^1.51.1",
     "@types/node": "^22.14.0",
     "monocart-reporter": "^2.9.17",
-    "playwright-ctrf-json-reporter": "^0.0.20"
+    "playwright-ctrf-json-reporter": "^0.0.20",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
   }
 }
