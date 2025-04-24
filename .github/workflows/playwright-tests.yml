@@ -113,7 +113,7 @@ jobs:
             ✅ Playwright report deployed: ${{ steps.deployment.outputs.page_url }}
             
       - name: 📝 Write report URL in Workflow Log
-        run: echo "🎭 [View Playwright Execution Report](${{ steps.deployment.outputs.page_url }}) >>" >> $GITHUB_STEP_SUMMARY
+        run: echo "🎭 [View Playwright Execution Report 🔗](${{ steps.deployment.outputs.page_url }})" >> $GITHUB_STEP_SUMMARY
 
       - name: 🧹 Clean previous test results
         run: rm -rf test-reports/
