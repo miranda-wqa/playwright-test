@@ -75,6 +75,7 @@ jobs:
       #   if: always()
 
       - name: 🎭 Add Test Summary HTML Table
+        if: always()
         run: node ./github-test-summary.js
 
   deploy:
@@ -119,8 +120,7 @@ jobs:
     
             
       - name: 📝 Write report URL in Workflow Log
-        run: |
-          echo "✅ Playwright report deployed: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
+        run: echo "✅ [View Playwright Report](${{ steps.deployment.outputs.page_url }})" >> $GITHUB_STEP_SUMMARY
 
       - name: 🧹 Clean previous test results
         run: rm -rf test-reports/
