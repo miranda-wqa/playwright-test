@@ -37,8 +37,9 @@ const seconds = (stats.duration / 1000).toFixed(2);
 // Determine the result symbol
 const resultSymbol = stats.failed > 0 ? '🔴' : '🟢';
 
-const html = `
 // <h2>Playwright Test Run Summary</h2>
+
+const html = `
 <table>
   <tr>
     <th>Results</th>
