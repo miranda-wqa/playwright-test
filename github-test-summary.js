@@ -41,6 +41,7 @@ const resultSymbol = stats.failed > 0 ? '🔴' : '🟢';
 
 const html = `
 <br>
+<h3>Execution Summary</h3>
 <table>
   <tr>
     <th>Results</th>
