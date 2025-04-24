@@ -12,10 +12,6 @@ permissions:
   pages: write
   id-token: write
 
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
-
 jobs:
   playwright-tests:
     name: 🎭 Playwright Tests
@@ -111,7 +107,7 @@ jobs:
 
       - name: 🔗 Comment Report URL
         run: |
-          echo "✅ Report: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/$REPORT_FOLDER"
+          echo "✅ Report: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/$REPORT_FOLDER/index.html"
         env:
           REPORT_FOLDER: ${{ env.REPORT_FOLDER }}
 
