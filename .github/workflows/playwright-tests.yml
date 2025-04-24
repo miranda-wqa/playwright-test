@@ -78,6 +78,10 @@ jobs:
         if: always()
         run: node ./github-test-summary.js
 
+      - name: Generate list using Markdown
+        run: |
+          echo "This is the lead in sentence for the list" >> $GITHUB_STEP_SUMMARY
+
   deploy:
     name: 📬 Upload Report
     needs: playwright-tests
@@ -112,7 +116,7 @@ jobs:
           message: |
             ✅ Playwright report deployed: ${{ steps.deployment.outputs.page_url }}
             
-      - name: 📝 Write report URL in Workflow Log
+      - name: 📝 Write report URL in Workflow Summary
         run: echo "🎭 [View Playwright Execution Report 🔗](${{ steps.deployment.outputs.page_url }})" >> $GITHUB_STEP_SUMMARY
 
       - name: 🧹 Clean previous test results
