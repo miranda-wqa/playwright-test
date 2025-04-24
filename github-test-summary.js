@@ -1,5 +1,6 @@
 const fs = require('fs');
 const results = JSON.parse(fs.readFileSync('test-reports/playwright-report.json', 'utf-8'));
+const cleanedResult = results.replace(/\n*---[\s\S]+?github.com\/ctrf-io[\s\S]+?$/, ''); // Removes CTRF footer section
 
 const stats = {
   passed: 0,
@@ -17,7 +18,7 @@ function parseSuites(suites) {
     if (suite.specs) {
       for (const spec of suite.specs) {
         for (const test of spec.tests) {
-          for (const run of test.results) {
+          for (const run of test.cleanedResult) {
             stats.duration += run.duration || 0;
             if (run.status === 'passed') stats.passed++;
             else if (run.status === 'skipped') stats.skipped++;

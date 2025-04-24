@@ -63,16 +63,16 @@ jobs:
           path: test-reports/monocart/
           retention-days: 1
 
-      # - name: 🖥️ Install CTRF CLI
-      #   run: npm install -g github-actions-ctrf
+      - name: 🖥️ Install CTRF CLI
+        run: npm install -g github-actions-ctrf
 
-      # - name: 📑 Publish CTRF Test Summary Results
-      #   uses: ctrf-io/github-test-reporter@v1
-      #   with:
-      #     report-path: './ctrf/*.json'
-      #     summary-report: true
-      #     test-report: true
-      #   if: always()
+      - name: 📑 Publish CTRF Test Summary Results
+        uses: ctrf-io/github-test-reporter@v1
+        with:
+          report-path: './ctrf/*.json'
+          summary-report: true
+          test-report: true
+        if: always()
 
       - name: 🎭 Add Test Summary HTML Table
         if: always()
@@ -111,16 +111,9 @@ jobs:
         with:
           message: |
             ✅ Playwright report deployed: ${{ steps.deployment.outputs.page_url }}
-
-      - name: 🐛 Debug Deployment Outputs
-        run: |
-          echo "All outputs:"
-          echo "Outputs: ${{ toJson(steps.deployment.outputs) }}"
-    
-    
             
       - name: 📝 Write report URL in Workflow Log
-        run: echo "✅ [View Playwright Report](${{ steps.deployment.outputs.page_url }})" >> $GITHUB_STEP_SUMMARY
+        run: echo "🎭 [View Playwright Run Report](${{ steps.deployment.outputs.page_url }})" >> $GITHUB_STEP_SUMMARY
 
       - name: 🧹 Clean previous test results
         run: rm -rf test-reports/
