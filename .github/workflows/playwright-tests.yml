@@ -86,33 +86,39 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: 📥 Download Playwright Report Artifact
-        uses: actions/download-artifact@v4
+      # - name: 📥 Download Playwright Report Artifact
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: playwright-report
+      #     path: report-to-publish
+
+      # - name: 🛠️ Setup GitHub Pages
+      #   uses: actions/configure-pages@v5
+
+      # - name: 📦 Upload HTML Report to Pages
+      #   uses: actions/upload-pages-artifact@v3
+      #   with:
+      #     path: report-to-publish
+
+      # - name: 🚀 Deploy to GitHub Pages
+      #   id: deployment
+      #   uses: actions/deploy-pages@v4
+
+      - name: Deploy Playwright HTML Report to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
         with:
-          name: playwright-report
-          path: report-to-publish
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./test-reports/monocart
 
-      - name: 🛠️ Setup GitHub Pages
-        uses: actions/configure-pages@v5
-
-      - name: 📦 Upload HTML Report to Pages
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: report-to-publish
-
-      - name: 🚀 Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-
-      - name: 📝 Write report URL in PR
-        if: github.event_name == 'pull_request'
-        uses: marocchino/sticky-pull-request-comment@v2
-        with:
-          message: |
-            ✅ Playwright report deployed: ${{ steps.deployment.outputs.page_url }}
+      # - name: 📝 Write report URL in PR
+      #   if: github.event_name == 'pull_request'
+      #   uses: marocchino/sticky-pull-request-comment@v2
+      #   with:
+      #     message: |
+      #       ✅ Playwright report deployed: ${{ steps.deployment.outputs.page_url }}
             
-      - name: 📝 Write report URL in Workflow Summary
-        run: echo "🎭 [View Playwright Execution Report 🔗](${{ steps.deployment.outputs.page_url }})" >> $GITHUB_STEP_SUMMARY
+      # - name: 📝 Write report URL in Workflow Summary
+      #   run: echo "🎭 [View Playwright Execution Report 🔗](${{ steps.deployment.outputs.page_url }})" >> $GITHUB_STEP_SUMMARY
 
       - name: 🧹 Clean previous test results
         run: rm -rf test-reports/
