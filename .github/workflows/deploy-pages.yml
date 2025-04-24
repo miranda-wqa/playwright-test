@@ -1,12 +1,12 @@
 # 🚀 Workflow to deploy the latest Playwright test report to GitHub Pages
-name: Deploy Playwright Report to GitHub Pages 📊🌍
+name: 🌍 Deploy Playwright Report to GitHub Pages
 
 on:
   workflow_dispatch: # 🔄 Manual trigger from GitHub Actions UI
 
 jobs:
   deploy:
-    name: Deploy to GitHub Pages 📤🌐
+    name: 🌐 Deploy to GitHub Pages
     runs-on: ubuntu-latest
     steps:
       - name: 🧑‍💻 Checkout code
@@ -28,4 +28,3 @@ jobs:
           keep_files: false             # ❌ Delete previous report files before pushing new ones
           enable_jekyll: false           # 🚫 Disable Jekyll for the repository if not using it
 
-          
