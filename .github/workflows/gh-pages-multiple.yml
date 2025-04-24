@@ -76,16 +76,26 @@ jobs:
           publish_branch: gh-pages
           enable_jekyll: false
 
-      - name: 🚀 Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: test-reports/monocart
-          publish_branch: gh-pages
-          enable_jekyll: false
-          allow_empty_commit: true
-          force_orphan: false
+      - name: 📄 Update index.html with new report link
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git pull origin gh-pages
 
+          mkdir -p temp-gh-pages
+          cd temp-gh-pages
+          git clone --depth 1 --branch gh-pages https://github.com/${{ github.repository }} .
+          
+          echo "<html><body><h1>🧪 Test Reports</h1><ul>" > index.html
+          for dir in $(ls -d report-* | sort -r); do
+            echo "<li><a href='${dir}/index.html'>${dir}</a></li>" >> index.html
+          done
+          echo "</ul></body></html>" >> index.html
+
+          git add index.html
+          git commit -m "🔄 Update index with $REPORT_DIR"
+          git push origin gh-pages
+        
       - name: 🔗 Comment Report URL
         run: |
           echo "✅ Report: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}" >> $GITHUB_STEP_SUMMARY
