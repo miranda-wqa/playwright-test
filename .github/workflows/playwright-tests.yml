@@ -115,11 +115,11 @@ jobs:
         run: |
           TIMESTAMP=$(date +%Y%m%d-%H%M%S)
           mkdir -p reports/$TIMESTAMP
-          if [ -d report-to-publish ] && [ "$(ls -A report-to-publish)" ]; then
-            mv report-to-publish/* reports/$TIMESTAMP
+          if [ -d test-reports ] && [ "$(ls -A test-reports)" ]; then
+            mv test-reports/* reports/$TIMESTAMP
             echo "REPORT_FOLDER=reports/$TIMESTAMP" >> $GITHUB_ENV
           else
-            echo "❌ report-to-publish is missing or empty"
+            echo "❌ test-reports is missing or empty"
             exit 1
           fi
 
@@ -127,7 +127,7 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: test-reports  # Upload the root folder
+          publish_dir: reports  # Upload the root folder
           publish_branch: gh-pages
           keep_files: true     # Keep previous reports!
           enable_jekyll: false
@@ -138,8 +138,8 @@ jobs:
         run: |
           echo "✅ Report: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/$REPORT_FOLDER"
 
-      - name: 🧹 Clean previous test results
-        run: rm -rf test-reports/
+      # - name: 🧹 Clean previous test results
+      #   run: rm -rf test-reports/
 
       - name: 📢 Show test completion message
         run: echo "🎉 All Playwright tests completed!"
