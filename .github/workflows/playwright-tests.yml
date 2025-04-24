@@ -8,7 +8,7 @@ on:
   workflow_dispatch: # Run on demand
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
