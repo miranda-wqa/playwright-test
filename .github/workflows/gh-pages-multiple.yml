@@ -1,0 +1,92 @@
+name: 🎭 GH Pages - Multiple
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  playwright-tests:
+    name: 🎭 Playwright Tests
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🚠 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: ♻️ Cache Node modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: ♻️ Cache Playwright binaries
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: 🔧 Install dependencies
+        run: npm ci
+
+      - name: 🌐 Install Playwright Browsers
+        run: npx playwright install --with-deps
+
+      - name: 🧲 Run Playwright tests
+        run: npx playwright test --project=chromium -g "test-1.spec.ts"
+
+  deploy:
+    name: 📬 Upload Report
+    needs: playwright-tests
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🚥 Run report build if needed (optional)
+        run: echo "Reports should already be built into test-reports/monocart"
+
+      - name: 🕓 Set report folder name
+        id: set-report-dir
+        run: echo "REPORT_DIR=report-$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_ENV
+      
+      - name: 🚀 Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: test-reports/monocart
+          destination_dir: ${{ env.REPORT_DIR }}
+          publish_branch: gh-pages
+          enable_jekyll: false
+
+      - name: 🚀 Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: test-reports/monocart
+          publish_branch: gh-pages
+          enable_jekyll: false
+          allow_empty_commit: true
+          force_orphan: false
+
+      - name: 🔗 Comment Report URL
+        run: |
+          echo "✅ Report: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}" >> $GITHUB_STEP_SUMMARY
+
