@@ -89,27 +89,49 @@ jobs:
           name: playwright-report
           path: report-to-publish
 
-      - name: 🛠️ Setup GitHub Pages
-        uses: actions/configure-pages@v5
+      # - name: 🛠️ Setup GitHub Pages
+      #   uses: actions/configure-pages@v5
 
-      - name: 📦 Upload HTML Report to Pages
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: report-to-publish
+      # - name: 📦 Upload HTML Report to Pages
+      #   uses: actions/upload-pages-artifact@v3
+      #   with:
+      #     path: report-to-publish
+
+      # - name: 🚀 Deploy to GitHub Pages
+      #   id: deployment
+      #   uses: actions/deploy-pages@v4
+
+      # - name: 📝 Write report URL in PR
+      #   if: github.event_name == 'pull_request'
+      #   uses: marocchino/sticky-pull-request-comment@v2
+      #   with:
+      #     message: |
+      #       ✅ Playwright report deployed: ${{ steps.deployment.outputs.page_url }}
+            
+      # - name: 📝 Write report URL in Workflow Summary
+      #   run: echo "🎭 [View Playwright Execution Report 🔗](${{ steps.deployment.outputs.page_url }})" >> $GITHUB_STEP_SUMMARY
+
+      - name: 🧾 Rename Report Folder
+        run: |
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          mkdir -p reports/$TIMESTAMP
+          mv temp-report/* reports/$TIMESTAMP
+          echo "REPORT_FOLDER=reports/$TIMESTAMP" >> $GITHUB_ENV
 
       - name: 🚀 Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-
-      - name: 📝 Write report URL in PR
-        if: github.event_name == 'pull_request'
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: peaceiris/actions-gh-pages@v3
         with:
-          message: |
-            ✅ Playwright report deployed: ${{ steps.deployment.outputs.page_url }}
-            
-      - name: 📝 Write report URL in Workflow Summary
-        run: echo "🎭 [View Playwright Execution Report 🔗](${{ steps.deployment.outputs.page_url }})" >> $GITHUB_STEP_SUMMARY
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: reports  # Upload the root folder
+          publish_branch: gh-pages
+          keep_files: true     # Keep previous reports!
+          enable_jekyll: false
+          allow_empty_commit: true
+          force_orphan: false
+
+      - name: 🔗 Comment Report URL
+        run: |
+          echo "✅ Report: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/$REPORT_FOLDER"
 
       - name: 🧹 Clean previous test results
         run: rm -rf test-reports/
