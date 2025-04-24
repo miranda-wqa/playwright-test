@@ -87,7 +87,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: playwright-report
-          path: report-to-publish
+          path: test-reports
 
       # - name: 🛠️ Setup GitHub Pages
       #   uses: actions/configure-pages@v5
