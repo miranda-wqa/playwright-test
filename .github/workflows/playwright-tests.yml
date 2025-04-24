@@ -113,6 +113,7 @@ jobs:
 
       - name: 🐛 Debug Deployment Outputs
         run: |
+          echo "All outputs:"
           echo "Outputs: ${{ toJson(steps.deployment.outputs) }}"
     
     
