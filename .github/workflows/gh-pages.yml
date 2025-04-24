@@ -5,7 +5,7 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
-  workflow_dispatch: # Run on demand
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -51,54 +51,30 @@ jobs:
       - name: 🧲 Run Playwright tests
         run: npx playwright test --project=chromium -g "test-1.spec.ts"
 
-      - name: 📦 Archive Test Results
-        if: success() || failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          path: test-reports/monocart/
-          retention-days: 1
-
   deploy:
     name: 📬 Upload Report
     needs: playwright-tests
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - name: 📥 Download Playwright Report Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: playwright-report
-          path: test-reports/monocart
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
 
-      - name: 📦 Move Monocart report to a fixed folder
-        run: |
-          mkdir -p reports/monocart
-          if [ -d test-reports/monocart ] && [ "$(ls -A test-reports/monocart)" ]; then
-            mv test-reports/monocart/* reports/monocart/
-            echo "REPORT_FOLDER=reports/monocart" >> $GITHUB_ENV
-          else
-            echo "❌ test-reports/monocart is missing or empty"
-            exit 1
-          fi
+      - name: 🚥 Run report build if needed (optional)
+        run: echo "Reports should already be built into test-reports/monocart"
 
       - name: 🚀 Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: reports
+          publish_dir: test-reports/monocart
           publish_branch: gh-pages
-          keep_files: true
           enable_jekyll: false
           allow_empty_commit: true
           force_orphan: false
 
       - name: 🔗 Comment Report URL
         run: |
-          REPORT_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/$REPORT_FOLDER/index.html"
-          echo "✅ Report: $REPORT_URL" >> $GITHUB_STEP_SUMMARY
-        env:
-          REPORT_FOLDER: ${{ env.REPORT_FOLDER }}
+          echo "✅ Report: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/index.html" >> $GITHUB_STEP_SUMMARY
 
-      - name: 📢 Show test completion message
-        run: echo "🎉 All Playwright tests completed!"
+          
