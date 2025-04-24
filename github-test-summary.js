@@ -40,7 +40,7 @@ const resultSymbol = stats.failed > 0 ? '🔴' : '🟢';
 // <h2>Playwright Test Run Summary</h2>
 
 const html = `
-<br><br>
+<br>
 <table>
   <tr>
     <th>Results</th>
