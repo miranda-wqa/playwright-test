@@ -36,7 +36,10 @@ jobs:
 
       - name: 📁 Set Report Folder Name
         id: report-dir
-        run: echo "REPORT_DIR=$(date +'%Y-%m-%d_%H-%M-%S')" >> $GITHUB_ENV
+        run: |
+          REPORT_DIR=$(date +'%Y-%m-%d_%H-%M-%S')
+          echo "REPORT_DIR=$REPORT_DIR" >> $GITHUB_ENV
+          echo "::set-output name=report_dir::$REPORT_DIR"
 
       - name: 📤 Prepare Reports for GH Pages
         run: |
@@ -50,6 +53,10 @@ jobs:
       - name: 📄 Generate Index Page
         run: |
           cd gh-pages
+          
+          # Use the output from the previous job to get the latest report's directory
+          REPORT_DIR="$REPORT_DIR"
+
           # Copy the template file to the deployment directory
             cp ../.github/workflows/report-index-template.html ./index.html.template
             
