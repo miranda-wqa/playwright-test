@@ -73,15 +73,19 @@ jobs:
       - name: 📄 Generate Index Page
         run: |
           cd gh-pages
-          REPORT_DIR=$(ls -d */ | head -n 1 | sed 's|/||')
+      
+          # Create the new report item
           NEW_ITEM="<li><a href='./${REPORT_DIR}/index.html'>$REPORT_DIR</a></li>"
-
+          
+          # If the index.html file exists, extract the old items
           if [ -f index.html ]; then
+            # Extract old list items, skipping the header/footer
             OLD_ITEMS=$(sed -n '/<ul>/,/<\/ul>/p' index.html | sed '1d;$d')
           else
             OLD_ITEMS=""
           fi
-
+      
+          # Create a new index.html or update the existing one
           echo "<html><body><h1>Test Reports</h1><ul>" > index.html
           echo "$NEW_ITEM" >> index.html
           echo "$OLD_ITEMS" >> index.html
