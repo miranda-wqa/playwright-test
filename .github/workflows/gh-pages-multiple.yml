@@ -1,4 +1,4 @@
-name: 🎭 Playwright Reports to GitHub Pages
+name: 🎭 GitHub Pages - Multiple
 
 on:
   push:
@@ -63,4 +63,3 @@ jobs:
           publish_branch: gh-pages
           enable_jekyll: false
 
-          
