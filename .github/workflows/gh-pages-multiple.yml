@@ -38,7 +38,7 @@ jobs:
       - name: 📁 Set Report Folder Name
         id: report-dir
         run: |
-          REPORT_DIR=$(date +'%Y-%m-%d_%H-%M-%S')_${{ github.run_id }}
+          REPORT_DIR=$(TZ="America/New_York" date +'%Y-%m-%d_%H-%M-%S')_${{ github.run_id }}
           echo "name=$REPORT_DIR" >> $GITHUB_OUTPUT
 
       - name: 📤 Package report
@@ -111,19 +111,13 @@ jobs:
           EOF
       
           # Generate list of reports, sorted by directory name (newest first)
-          for dir in \$(ls -d */ | sort -r); do
+            for dir in \$(ls -d */ | sort -r); do
             dir_name=\${dir%/}
             if [ "\$dir_name" = "\$REPORT_DIR" ]; then
-              echo "<li class=\"latest\"><a href=\"./\$dir_name/index.html\">Run: \$dir_name<span class=\"date\">Generated on \$(date '+%A, %B %d, %Y at %H:%M')</span></a></li>" >> index.html
+              echo "<li class=\"latest\"><a href=\"./\$dir_name/index.html\">Run: \$dir_name<span class=\"date\">Generated on \$$begin:math:text$TZ=\\"America/New_York\\" date '+%A, %B %d, %Y at %H:%M'$end:math:text$</span></a></li>" >> index.html
             else
-              # Extract timestamp from directory name (before the run_id suffix)
-              # Extract timestamp from directory name (before the run_id suffix)
-              timestamp=${dir_name%_*}  # e.g., 2025-04-25_12-34-56
-              # Convert timestamp to readable date (approximate)
-              readable_date=$(date -d "${timestamp//_/ }" '+%A, %B %d, %Y at %H:%M' 2>/dev/null)
-              if [ -z "$readable_date" ]; then
-                readable_date="Unknown date"
-              fi
+              timestamp=\${dir_name%_*}
+              readable_date=\$(TZ="America/New_York" date -d "\${timestamp//_/ }" '+%A, %B %d, %Y at %H:%M' 2>/dev/null || echo "Unknown date")
               echo "<li><a href=\"./\$dir_name/index.html\">Run: \$dir_name<span class=\"date\">Generated on \$readable_date</span></a></li>" >> index.html
             fi
           done
