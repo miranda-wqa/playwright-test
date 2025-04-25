@@ -63,6 +63,10 @@ jobs:
           name: gh-pages
           path: gh-pages/
 
+      - name: 📂 List files in gh-pages
+        run: |
+          ls -R gh-pages
+
   deploy:
     name: 🚀 Deploy to GitHub Pages
     runs-on: ubuntu-latest
