@@ -50,12 +50,13 @@ jobs:
 
       - name: 📄 Generate Index Page
         run: |
-          cd gh-pages
-          echo "<html><body><h1>Test Reports</h1><ul>" > index.html
-          for d in report-*; do
-            echo "<li><a href='$d/index.html'>$d</a></li>" >> index.html
+          mkdir -p gh-pages
+          echo "<html><body><h1>Test Reports</h1><ul>" > gh-pages/index.html
+          for d in gh-pages/report-*; do
+            dir_name=$(basename $d)
+            echo "<li><a href='${dir_name}/index.html'>${dir_name}</a></li>" >> gh-pages/index.html
           done
-          echo "</ul></body></html>" >> index.html
+          echo "</ul></body></html>" >> gh-pages/index.html
 
       - name: 📦 Upload reports for next job
         uses: actions/upload-artifact@v4
