@@ -117,9 +117,13 @@ jobs:
               echo "<li class=\"latest\"><a href=\"./\$dir_name/index.html\">Run: \$dir_name<span class=\"date\">Generated on \$(date '+%A, %B %d, %Y at %H:%M')</span></a></li>" >> index.html
             else
               # Extract timestamp from directory name (before the run_id suffix)
-              timestamp=\${dir_name%_*}  # e.g., 2025-04-25_12-34-56
+              # Extract timestamp from directory name (before the run_id suffix)
+              timestamp=${dir_name%_*}  # e.g., 2025-04-25_12-34-56
               # Convert timestamp to readable date (approximate)
-              readable_date=\$(date -d "\${timestamp//_/ }" '+%A, %B %d, %Y at %H:%M' 2>/dev/null || echo "Unknown date")
+              readable_date=$(date -d "${timestamp//_/ }" '+%A, %B %d, %Y at %H:%M' 2>/dev/null)
+              if [ -z "$readable_date" ]; then
+                readable_date="Unknown date"
+              fi
               echo "<li><a href=\"./\$dir_name/index.html\">Run: \$dir_name<span class=\"date\">Generated on \$readable_date</span></a></li>" >> index.html
             fi
           done
