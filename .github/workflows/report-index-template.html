@@ -13,35 +13,36 @@
       --primary-light: #eff6ff;
       --success: #16a34a;
       --success-light: #ecfdf5;
-      --text: #1e293b;
-      --text-light: #64748b;
-      --border: #e2e8f0;
-      --background: #4d805fa1;
+      --text: #e2e8f0;  /* Light text for dark background */
+      --text-light: #9ca3af; /* Lighter text for subtext */
+      --border: #4b5563;  /* Darker border color */
+      --background: #1f2937; /* Dark background */
+      --background-alt: #2d3748; /* Darker background for lists */
     }
-    
+
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
-    
+
     body {
-      font-family: 'Nunito', sans-serif;
+      font-family: 'Inter', sans-serif;
       line-height: 1.5;
       color: var(--text);
       background-color: var(--background);
       padding: 2rem;
     }
-    
+
     .container {
       max-width: 900px;
       margin: 0 auto;
-      background-color: hwb(60 95% 4% / 0.664);
+      background-color: var(--background-alt);
       border-radius: 10px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
       padding: 2rem;
     }
-    
+
     header {
       display: flex;
       align-items: center;
@@ -49,40 +50,41 @@
       padding-bottom: 1rem;
       border-bottom: 1px solid var(--border);
     }
-    
+
     .logo {
       margin-right: 1rem;
       font-size: 2rem;
       color: var(--primary);
     }
-    
+
     h1 {
       font-size: 1.8rem;
       font-weight: 700;
       color: var(--text);
     }
-    
+
     .subtitle {
       margin-bottom: 1.5rem;
       color: var(--text-light);
     }
-    
+
     ul {
       list-style-type: none;
     }
-    
+
     li {
       margin-bottom: 1rem;
       border-radius: 8px;
       border: 1px solid var(--border);
       transition: all 0.2s ease;
+      background-color: var(--background-alt);
     }
-    
+
     li:hover {
       transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
-    
+
     li a {
       display: block;
       padding: 1rem 1.5rem;
@@ -90,20 +92,20 @@
       text-decoration: none;
       font-weight: 500;
     }
-    
+
     .date {
       color: var(--text-light);
       font-size: 0.875rem;
       display: block;
       margin-top: 0.25rem;
     }
-    
+
     .latest {
       background-color: var(--success-light);
       border-color: var(--success);
       position: relative;
     }
-    
+
     .latest::before {
       content: "Latest";
       position: absolute;
@@ -116,13 +118,14 @@
       padding: 0.25rem 0.5rem;
       border-radius: 1rem;
     }
-    
+
     footer {
       margin-top: 3rem;
       text-align: center;
       color: var(--text-light);
       font-size: 0.875rem;
     }
+
   </style>
 </head>
 <body>
