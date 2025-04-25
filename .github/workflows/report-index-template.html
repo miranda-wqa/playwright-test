@@ -125,23 +125,25 @@
       margin-top: 0.25rem;
     }
 
+    /* Latest tile with improved readability */
     .latest {
-      background-color: var(--success-light);
-      border-color: var(--success);
-      position: relative;
+    background-color: var(--primary); /* Use primary color for the background */
+    border-color: var(--success);
+    position: relative;
+    color: #fff; /* Ensure text is white for better visibility */
     }
 
     .latest::before {
-      content: "Latest";
-      position: absolute;
-      top: -0.5rem;
-      right: 1rem;
-      background-color: var(--success);
-      color: white;
-      font-size: 0.75rem;
-      font-weight: 600;
-      padding: 0.25rem 0.5rem;
-      border-radius: 1rem;
+    content: "Latest";
+    position: absolute;
+    top: -0.5rem;
+    right: 1rem;
+    background-color: var(--success); /* Ensure success background stands out */
+    color: #fff; /* White text to improve readability */
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: 1rem;
     }
 
     footer {
