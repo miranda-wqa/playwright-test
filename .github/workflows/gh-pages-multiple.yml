@@ -39,12 +39,12 @@ jobs:
 
       - name: 📁 Set Report Folder Name
         id: report-dir
-        run: echo "dir=report-$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
+        run: echo "REPORT_DIR=report-$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_ENV
 
       - name: 📤 Prepare Reports for GH Pages
         run: |
-          mkdir -p gh-pages/${{ steps.report-dir.outputs.dir }}
-          cp -r test-reports/monocart/* gh-pages/${{ steps.report-dir.outputs.dir }} || echo "No reports to copy"
+          mkdir -p gh-pages/$REPORT_DIR
+          cp -r test-reports/monocart/* gh-pages/$REPORT_DIR || echo "No reports to copy"
 
       - name: 📄 Generate Index Page
         run: |
@@ -54,24 +54,22 @@ jobs:
             echo "<li><a href='$d/index.html'>$d</a></li>" >> index.html
           done
           echo "</ul></body></html>" >> index.html
-
-      - name: 🕓 Set report folder name
-        id: set-report-dir
-        run: echo "REPORT_DIR=report-$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_ENV
   
+      - name: 📊 Generate HTML report
+        run: |
+          npx playwright show-report --reporter html
+
       - name: 🚀 Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: test-reports/monocart
-          destination_dir: ${{ env.REPORT_DIR }}
+          publish_dir: gh-pages
           publish_branch: gh-pages
           enable_jekyll: false
 
       - name: 🔗 Add report URL to summary
         run: |
           echo "## ✅ Test Report Available" >> $GITHUB_STEP_SUMMARY
-          echo "[Open Report 🔍](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ env.REPORT_DIR }}/)" >> $GITHUB_STEP_SUMMARY
-
+          echo "[Open Report 🔍](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/$REPORT_DIR/)" >> $GITHUB_STEP_SUMMARY
 
           
