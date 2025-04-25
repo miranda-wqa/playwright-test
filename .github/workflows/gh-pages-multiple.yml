@@ -39,7 +39,7 @@ jobs:
       - name: 📁 Set Report Folder Name
         id: report-dir
         run: |
-          REPORT_DIR=report-$(date +'%Y-%m-%d_%H-%M-%S')
+          REPORT_DIR=report-$(date +'%Y%m%d%H%M%S')
           echo "REPORT_DIR=$REPORT_DIR" >> $GITHUB_ENV
           echo "::set-output name=report-dir::$REPORT_DIR"
 
@@ -84,6 +84,5 @@ jobs:
 
       - name: 🔗 Add report URL to summary
         run: |
-          echo "## ✅ Test Report Available" >> $GITHUB_STEP_SUMMARY
+          # echo "## ✅ Test Report Available" >> $GITHUB_STEP_SUMMARY
           echo "[Open Report 🔍](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ needs.tests.outputs.report-dir }}/)" >> $GITHUB_STEP_SUMMARY
-          
