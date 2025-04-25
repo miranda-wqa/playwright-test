@@ -205,32 +205,28 @@
   </div>
 
   <script>
-    // Load the theme from localStorage if available
-    const storedTheme = localStorage.getItem('theme');
-    if (storedTheme) {
-      document.body.classList.add(storedTheme);
-    }
-
     const themeToggleButton = document.getElementById('themeToggle');
-    let currentTheme = storedTheme || 'light-theme';
-
-    // Toggle between light and dark theme
+    const storedTheme = localStorage.getItem('theme') || 'light-theme';
+    let currentTheme = storedTheme;
+  
+    // Apply the saved theme
+    document.body.classList.add(currentTheme);
+  
+    // Set correct button label on load
+    themeToggleButton.textContent = currentTheme === 'dark-theme' 
+      ? 'Switch to Light Theme' 
+      : 'Switch to Dark Theme';
+  
+    // Toggle logic
     themeToggleButton.addEventListener('click', () => {
-      // Toggle class
-      if (currentTheme === 'light-theme') {
-        document.body.classList.remove('light-theme');
-        document.body.classList.add('dark-theme');
-        themeToggleButton.textContent = 'Switch to Light Theme';
-        currentTheme = 'dark-theme';
-      } else {
-        document.body.classList.remove('dark-theme');
-        document.body.classList.add('light-theme');
-        themeToggleButton.textContent = 'Switch to Dark Theme';
-        currentTheme = 'light-theme';
-      }
-
-      // Save the current theme to localStorage
+      const isLight = currentTheme === 'light-theme';
+      document.body.classList.toggle('light-theme', !isLight);
+      document.body.classList.toggle('dark-theme', isLight);
+      currentTheme = isLight ? 'dark-theme' : 'light-theme';
       localStorage.setItem('theme', currentTheme);
+      themeToggleButton.textContent = isLight 
+        ? 'Switch to Light Theme' 
+        : 'Switch to Dark Theme';
     });
   </script>
 </body>
