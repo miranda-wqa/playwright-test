@@ -1,0 +1,72 @@
+
+name: 🎭 GitHub Pages - Multiple - Single Flow
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  tests:
+    name: 🎭 Run Tests & Deploy Report
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🚠 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: 🔧 Install dependencies
+        run: npm ci
+
+      - name: 🌐 Install Playwright
+        run: npx playwright install --with-deps
+
+      - name: 🧪 Run Playwright Tests
+        run: npx playwright test --project=chromium -g "test-1.spec.ts"
+        continue-on-error: true   # ✅ allows workflow to continue even if tests fail
+
+      - name: 📁 Set Report Folder Name
+        id: report-dir
+        run: echo "REPORT_DIR=report-$(date +'%Y-%m-%d_%H-%M-%S')" >> $GITHUB_ENV
+
+      - name: 📤 Prepare Reports for GH Pages
+        run: |
+          mkdir -p gh-pages/$REPORT_DIR
+          cp -r test-reports/monocart/* gh-pages/$REPORT_DIR || echo "No reports to copy"
+
+      - name: 📂 List files in gh-pages  # Add this step to check the contents of the gh-pages folder
+        run: |
+          ls -R gh-pages
+
+      - name: 📄 Generate Index Page
+        run: |
+          cd gh-pages
+          echo "<html><body><h1>Test Reports</h1><ul>" > index.html
+          for d in report-*; do
+            echo "<li><a href='$d/index.html'>$d</a></li>" >> index.html
+          done
+          echo "</ul></body></html>" >> index.html
+
+      - name: 🚀 Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: gh-pages
+          publish_branch: gh-pages
+          enable_jekyll: false
+
+      - name: 🔗 Add report URL to summary
+        run: |
+          echo "## ✅ Test Report Available" >> $GITHUB_STEP_SUMMARY
+          echo "[Open Report 🔍](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/$REPORT_DIR/)" >> $GITHUB_STEP_SUMMARY
+
+          
