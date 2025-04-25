@@ -87,16 +87,15 @@ jobs:
           git clone --depth 1 --branch gh-pages https://github.com/${{ github.repository }} .
           
           echo "<html><body><h1>🧪 Test Reports</h1><ul>" > index.html
-          for dir in $(ls -d report-* | sort -r); do
+          for dir in $(ls -d pr-* | sort -r); do
             echo "<li><a href='${dir}/index.html'>${dir}</a></li>" >> index.html
           done
           echo "</ul></body></html>" >> index.html
 
           git add index.html
-          git commit -m "🔄 Update index with $REPORT_DIR"
+          git commit -m "🔄 Update index with PR-${{ github.event.pull_request.number }} report"
           git push origin gh-pages
         
       - name: 🔗 Comment Report URL
         run: |
-          echo "✅ Report: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}" >> $GITHUB_STEP_SUMMARY
-
+          echo "✅ Report: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/pr-${{ github.event.pull_request.number }}" >> $GITHUB_STEP_SUMMARY
