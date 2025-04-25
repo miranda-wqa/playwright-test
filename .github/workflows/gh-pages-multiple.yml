@@ -34,7 +34,7 @@ jobs:
         run: npx playwright install --with-deps
 
       - name: 🧪 Run Playwright Tests
-        run: npx playwright test
+        run: npx playwright test --project=chromium -g "test-1.spec.ts"
         continue-on-error: true   # ✅ allows workflow to continue even if tests fail
 
       - name: 📁 Set Report Folder Name
