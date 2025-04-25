@@ -51,11 +51,10 @@ jobs:
       - name: 📑 Generate index page
         run: |
           cd gh-pages
-          
-          # Use the output from the previous job
-          REPORT_DIR="${{ needs.tests.outputs.report_dir }}"
-          
-          cat > index.html << EOF
+
+          REPORT_DIR="$REPORT_DIR"
+
+          cat > index.html <<EOF
           <!DOCTYPE html>
           <html lang="en">
           <head>
@@ -76,21 +75,23 @@ jobs:
             <h1>Playwright Test Reports</h1>
             <p>Select a test run to view its report:</p>
             <ul>
+              <li class="latest">
+                <a href="./$REPORT_DIR/index.html">Latest Run ($REPORT_DIR)</a>
+                <span class="date">$(date)</span>
+              </li>
           EOF
 
-          # Add the latest run at the top
-          echo "<li class=\"latest\"><a href=\"./$REPORT_DIR/index.html\">Latest Run ($REPORT_DIR)</a> <span class=\"date\">$(date)</span></li>" >> index.html
+            find . -maxdepth 1 -type d -name "20*" | sort -r | while read dir; do
+              dir_name=$(basename "$dir")
+              if [[ "$dir_name" != "$REPORT_DIR" ]]; then
+                echo "        <li><a href=\"./$dir_name/index.html\">$dir_name</a></li>" >> index.html
+              fi
+            done
 
-          # List all other report folders in reverse chronological order
-          find . -maxdepth 1 -type d -name "20*" | sort -r | while read dir; do
-            dir_name=$(basename "$dir")
-            if [[ "$dir_name" != "$REPORT_DIR" ]]; then
-              echo "<li><a href=\"./$dir_name/index.html\">$dir_name</a></li>" >> index.html
-            fi
-          done
-
-          echo "</ul></body></html>" >> index.html
-          
+            echo "      </ul>" >> index.html
+            echo "    </body>" >> index.html
+            echo "    </html>" >> index.html
+        
       - name: 🚀 Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
