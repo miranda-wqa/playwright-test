@@ -36,7 +36,7 @@ jobs:
 
       - name: 📁 Set Report Folder Name
         id: report-dir
-        run: echo "REPORT_DIR=report-$(date +'%Y-%m-%d_%H-%M-%S')" >> $GITHUB_ENV
+        run: echo "REPORT_DIR=report-$(date +'%Y%m%d%H%M%S')" >> $GITHUB_ENV
 
       - name: 📤 Prepare Reports for GH Pages
         run: |
@@ -69,4 +69,3 @@ jobs:
           echo "## ✅ Test Report Available" >> $GITHUB_STEP_SUMMARY
           echo "[Open Report 🔍](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/$REPORT_DIR/)" >> $GITHUB_STEP_SUMMARY
 
-          
