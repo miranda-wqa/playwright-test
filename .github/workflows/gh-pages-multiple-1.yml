@@ -50,41 +50,33 @@ jobs:
       - name: 📄 Generate Index Page
         run: |
           cd gh-pages
-          cat > index.html << EOF
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Playwright Test Reports</title>
-            <style>
-              body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-              h1 { color: #333; }
-              ul { list-style-type: none; padding: 0; }
-              li { margin: 10px 0; padding: 10px; border: 1px solid #eee; border-radius: 5px; }
-              a { color: #0366d6; text-decoration: none; font-weight: bold; }
-              .date { color: #666; font-size: 0.9em; }
-              .latest { background-color: #f0fff0; border-left: 5px solid #2cbe4e; }
-            </style>
-          </head>
-          <body>
-            <h1>Playwright Test Reports</h1>
-            <p>Select a test run to view its report:</p>
-            <ul>
-          EOF
+          # Copy the template file to the deployment directory
+            cp ../.github/workflows/report-index-template.html ./index.html.template
+            
+            # Generate the list of directories in a variable
+            DIRS=$(find . -maxdepth 1 -type d -name "20*" | sort -r)
 
-          # Add the latest run at the top
-          echo "<li class=\"latest\"><a href=\"./$REPORT_DIR/index.html\">Latest Run ($REPORT_DIR)</a> <span class=\"date\">$(date)</span></li>" >> index.html
+            # Start building the REPORT_ITEMS
+            REPORT_ITEMS=""
 
-          # List all other report folders in reverse chronological order
-          find . -maxdepth 1 -type d -name "20*" | sort -r | while read dir; do
-            dir_name=$(basename "$dir")
-            if [[ "$dir_name" != "$REPORT_DIR" ]]; then
-              echo "<li><a href=\"./$dir_name/index.html\">$dir_name</a></li>" >> index.html
-            fi
-          done
+            # Add latest run first
+            LATEST_ITEM="<li class=\"latest\"><a href=\"./$REPORT_DIR/index.html\">Run: $REPORT_DIR <span class=\"date\">Generated on $(date '+%A, %B %d, %Y at %H:%M')</span></a></li>"
+            REPORT_ITEMS="$REPORT_ITEMS$LATEST_ITEM"
 
-          echo "</ul></body></html>" >> index.html
+            # Append previous runs — using a subshell-safe method
+            while read dir; do
+              dir_name=$(basename "$dir")
+              if [[ "$dir_name" != "$REPORT_DIR" ]]; then
+                ITEM="<li><a href=\"./$dir_name/index.html\">Run: $dir_name <span class=\"date\">Generated on $dir_name</span></a></li>"
+                REPORT_ITEMS="$REPORT_ITEMS$ITEM"
+              fi
+            done <<< "$DIRS"
+
+            # Replace the placeholder in the template with the actual items
+            sed "s|<!-- REPORT_ITEMS -->|$REPORT_ITEMS|g" index.html.template > index.html
+            
+            # Clean up
+            rm index.html.template
 
       - name: 🚀 Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
