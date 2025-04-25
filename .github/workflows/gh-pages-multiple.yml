@@ -1,4 +1,4 @@
-name: 🎭 Multiple Reports to GitHub Pages
+name: 🎭 Playwright Reports to GitHub Pages
 
 on:
   push:
@@ -35,6 +35,7 @@ jobs:
 
       - name: 🧪 Run Playwright Tests
         run: npx playwright test
+        continue-on-error: true   # ✅ allows workflow to continue even if tests fail
 
       - name: 📁 Set Report Folder Name
         id: report-dir
@@ -43,7 +44,7 @@ jobs:
       - name: 📤 Prepare Reports for GH Pages
         run: |
           mkdir -p gh-pages/${{ steps.report-dir.outputs.dir }}
-          cp -r test-reports/monocart/* gh-pages/${{ steps.report-dir.outputs.dir }}
+          cp -r test-reports/monocart/* gh-pages/${{ steps.report-dir.outputs.dir }} || echo "No reports to copy"
 
       - name: 📄 Generate Index Page
         run: |
@@ -62,3 +63,4 @@ jobs:
           publish_branch: gh-pages
           enable_jekyll: false
 
+          
