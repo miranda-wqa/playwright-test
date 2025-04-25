@@ -4,6 +4,10 @@
 name: 🎭 GitHub Pages - Multiple Jobs
 
 on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
   workflow_dispatch:
 
 permissions:
