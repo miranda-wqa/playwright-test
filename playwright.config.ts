@@ -26,7 +26,7 @@ export default defineConfig({
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['html', { outputFolder: path.resolve('test-reports/playwright-report') }],
-    ['monocart-reporter', { outputFile: path.resolve('test-reports/monocart/index.html')}],
+    ['monocart-reporter', { configFile: 'monocart.config.js' }],
     ['json', { outputFile: path.resolve('test-reports/playwright-report.json')}],
     ['playwright-ctrf-json-reporter', {outputFile: 'ctrf-report.json', outputDir: path.resolve('test-reports/ctrf/')}]
   ],
