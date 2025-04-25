@@ -1,10 +1,10 @@
-name: 🎭 GH Pages - Multiple
+name: 🎭 Multiple Reports to GitHub Pages
 
 on:
   push:
-    branches: [main, master]
+    branches: [main]
   pull_request:
-    branches: [main, master]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -13,10 +13,11 @@ permissions:
   id-token: write
 
 jobs:
-  playwright-tests:
-    name: 🎭 Playwright Tests
-    timeout-minutes: 5
+  tests:
+    name: 🎭 Run Tests & Deploy Report
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+
     steps:
       - name: 📥 Checkout Code
         uses: actions/checkout@v4
@@ -26,80 +27,38 @@ jobs:
         with:
           node-version: lts/*
 
-      - name: ♻️ Cache Node modules
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: ♻️ Cache Playwright binaries
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-playwright-
-
       - name: 🔧 Install dependencies
         run: npm ci
 
-      - name: 🌐 Install Playwright Browsers
+      - name: 🌐 Install Playwright
         run: npx playwright install --with-deps
 
-      - name: 🧲 Run Playwright tests
-        run: npx playwright test --project=chromium -g "test-1.spec.ts"
+      - name: 🧪 Run Playwright Tests
+        run: npx playwright test
 
-  deploy:
-    name: 📬 Upload Report
-    needs: playwright-tests
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - name: 📥 Checkout Code
-        uses: actions/checkout@v4
+      - name: 📁 Set Report Folder Name
+        id: report-dir
+        run: echo "dir=report-$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
 
-      - name: 🚥 Run report build if needed (optional)
-        run: echo "Reports should already be built into test-reports/monocart"
+      - name: 📤 Prepare Reports for GH Pages
+        run: |
+          mkdir -p gh-pages/${{ steps.report-dir.outputs.dir }}
+          cp -r test-reports/monocart/* gh-pages/${{ steps.report-dir.outputs.dir }}
 
-      - name: 🕓 Set report folder name
-        id: set-report-dir
-        run: echo "REPORT_DIR=report-$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_ENV
-      
+      - name: 📄 Generate Index Page
+        run: |
+          cd gh-pages
+          echo "<html><body><h1>Test Reports</h1><ul>" > index.html
+          for d in report-*; do
+            echo "<li><a href='$d/index.html'>$d</a></li>" >> index.html
+          done
+          echo "</ul></body></html>" >> index.html
+
       - name: 🚀 Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: test-reports/monocart
-          destination_dir: ${{ env.REPORT_DIR }}
+          publish_dir: gh-pages
           publish_branch: gh-pages
           enable_jekyll: false
-
-      - name: 📄 Update index.html with new report link
-        if: ${{ github.event_name == 'pull_request' }}
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-      
-          mkdir -p temp-gh-pages
-          cd temp-gh-pages
-          git clone --depth 1 --branch gh-pages https://github.com/${{ github.repository }} .
-      
-          echo "<html><body><h1>🧪 Test Reports</h1><ul>" > index.html
-          for dir in $(ls -d report-* 2>/dev/null | sort -r); do
-            echo "<li><a href='${dir}/index.html'>${dir}</a></li>" >> index.html
-          done
-          echo "</ul></body></html>" >> index.html
-      
-          git add index.html
-          git commit -m "🔄 Update index with PR-${{ github.event.pull_request.number }} report"
-          git push https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }} gh-pages
-      
-          cd ..
-          rm -rf temp-gh-pages
-          
-      - name: 🔗 Comment Report URL
-        run: |
-          echo "✅ Report: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/pr-${{ github.event.pull_request.number }}" >> $GITHUB_STEP_SUMMARY
 
