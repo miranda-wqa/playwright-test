@@ -1,10 +1,7 @@
+
 name: 🎭 GitHub Pages - Multiple
 
 on:
-  # push:
-  #   branches: [main]
-  # pull_request:
-  #   branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -14,9 +11,11 @@ permissions:
 
 jobs:
   tests:
-    name: 🎭 Run Tests & Deploy Report
+    name: 🎭 Run Tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      report-dir: ${{ steps.report-dir.outputs.report-dir }}
 
     steps:
       - name: 📥 Checkout Code
@@ -35,12 +34,14 @@ jobs:
 
       - name: 🧪 Run Playwright Tests
         run: npx playwright test --project=chromium -g "test-1.spec.ts"
-        continue-on-error: true   # ✅ allows workflow to continue even if tests fail
+        continue-on-error: true
 
       - name: 📁 Set Report Folder Name
         id: report-dir
-        # run: echo "REPORT_DIR=report-$(date +'%Y%m%d%H%M%S')" >> $GITHUB_ENV
-        run: echo "REPORT_DIR=report-$(date +'%Y-%m-%d_%H-%M-%S')" >> $GITHUB_ENV
+        run: |
+          REPORT_DIR=report-$(date +'%Y-%m-%d_%H-%M-%S')
+          echo "REPORT_DIR=$REPORT_DIR" >> $GITHUB_ENV
+          echo "::set-output name=report-dir::$REPORT_DIR"
 
       - name: 📤 Prepare Reports for GH Pages
         run: |
@@ -55,7 +56,24 @@ jobs:
             echo "<li><a href='$d/index.html'>$d</a></li>" >> index.html
           done
           echo "</ul></body></html>" >> index.html
-  
+
+      - name: 📦 Upload reports for next job
+        uses: actions/upload-artifact@v4
+        with:
+          name: gh-pages
+          path: gh-pages/
+
+  deploy:
+    name: 🚀 Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: tests
+    steps:
+      - name: 📥 Download prepared reports
+        uses: actions/download-artifact@v4
+        with:
+          name: gh-pages
+          path: gh-pages
+
       - name: 🚀 Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
@@ -66,5 +84,6 @@ jobs:
 
       - name: 🔗 Add report URL to summary
         run: |
+          REPORT_DIR=${{ needs.tests.outputs.report-dir }}
           echo "## ✅ Test Report Available" >> $GITHUB_STEP_SUMMARY
           echo "[Open Report 🔍](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/$REPORT_DIR/)" >> $GITHUB_STEP_SUMMARY
