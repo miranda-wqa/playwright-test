@@ -55,11 +55,16 @@ jobs:
           done
           echo "</ul></body></html>" >> index.html
 
+      - name: 🕓 Set report folder name
+        id: set-report-dir
+        run: echo "REPORT_DIR=report-$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_ENV
+  
       - name: 🚀 Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: gh-pages
+          publish_dir: test-reports/monocart
+          destination_dir: ${{ env.REPORT_DIR }}
           publish_branch: gh-pages
           enable_jekyll: false
 
@@ -67,5 +72,6 @@ jobs:
         run: |
           echo "## ✅ Test Report Available" >> $GITHUB_STEP_SUMMARY
           echo "[Open Report 🔍](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ env.REPORT_DIR }}/)" >> $GITHUB_STEP_SUMMARY
+
 
           
