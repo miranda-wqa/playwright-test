@@ -84,50 +84,36 @@ jobs:
         run: |
           cd gh-pages
       
-          REPORT_DIR="${{ needs.tests.outputs.report_dir }}"
-      
-          # Create index.html with all reports
-          cat > index.html <<EOF
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Playwright Test Reports</title>
-            <style>
-              body { font-family: 'Nunito', sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-              h1 { color: #333; }
-              ul { list-style-type: none; padding: 0; }
-              li { margin: 10px 0; padding: 10px; border: 1px solid #eee; border-radius: 5px; }
-              a { color: #0366d6; text-decoration: none; font-weight: bold; }
-              .date { color: #666; font-size: 0.9em; }
-              .latest { background-color: #f0fff0; border-left: 5px solid #2cbe4e; }
-            </style>
-          </head>
-          <body>
-            <h1>Playwright Test Reports</h1>
-            <p>Select a test run to view its report:</p>
-            <ul>
-          EOF
-      
-          # Generate list of reports, sorted by directory name (newest first)
-            for dir in \$(ls -d */ | sort -r); do
-            dir_name=\${dir%/}
-            if [ "\$dir_name" = "\$REPORT_DIR" ]; then
-              echo "<li class=\"latest\"><a href=\"./\$dir_name/index.html\">Run: \$dir_name<span class=\"date\">Generated on \$$begin:math:text$TZ=\\"America/New_York\\" date '+%A, %B %d, %Y at %H:%M'$end:math:text$</span></a></li>" >> index.html
-            else
-              timestamp=\${dir_name%_*}
-              readable_date=\$(TZ="America/New_York" date -d "\${timestamp//_/ }" '+%A, %B %d, %Y at %H:%M' 2>/dev/null || echo "Unknown date")
-              echo "<li><a href=\"./\$dir_name/index.html\">Run: \$dir_name<span class=\"date\">Generated on \$readable_date</span></a></li>" >> index.html
-            fi
-          done
-      
-          # Close the HTML
-          cat >> index.html <<EOF
-            </ul>
-          </body>
-          </html>
-          EOF
+          # Use the output from the previous job
+            REPORT_DIR="${{ needs.tests.outputs.report_dir }}"
+            
+            # Copy the template file to the deployment directory
+            cp ../.github/workflows/report-index-template.html ./index.html.template
+            
+            # Generate the list of directories in a variable
+            DIRS=$(find . -maxdepth 1 -type d -name "20*" | sort -r)
+
+            # Start building the REPORT_ITEMS
+            REPORT_ITEMS=""
+
+            # Add latest run first
+            LATEST_ITEM="<li class=\"latest\"><a href=\"./$REPORT_DIR/index.html\">Run: $REPORT_DIR <span class=\"date\">Generated on $(date '+%A, %B %d, %Y at %H:%M')</span></a></li>"
+            REPORT_ITEMS="$REPORT_ITEMS$LATEST_ITEM"
+
+            # Append previous runs — using a subshell-safe method
+            while read dir; do
+              dir_name=$(basename "$dir")
+              if [[ "$dir_name" != "$REPORT_DIR" ]]; then
+                ITEM="<li><a href=\"./$dir_name/index.html\">Run: $dir_name <span class=\"date\">Generated on $dir_name</span></a></li>"
+                REPORT_ITEMS="$REPORT_ITEMS$ITEM"
+              fi
+            done <<< "$DIRS"
+
+            # Replace the placeholder in the template with the actual items
+            sed "s|<!-- REPORT_ITEMS -->|$REPORT_ITEMS|g" index.html.template > index.html
+            
+            # Clean up
+            rm index.html.template
 
       - name: 🚀 Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
