@@ -90,7 +90,7 @@ jobs:
           REPORT_DIR="${{ needs.tests.outputs.report_dir }}"
           
           # Copy the template file to the deployment directory
-          cp ../.github/report-index-template.html ./index.html.template
+          cp ../.github/workflows/report-index-template.html ./index.html.template
           
           # Generate the report items HTML
           REPORT_ITEMS=""
