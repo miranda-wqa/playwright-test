@@ -82,7 +82,6 @@ jobs:
       - name: 📂 List files in gh-pages
         run: ls -R gh-pages
 
-      # Create/update index page with links to all reports
       - name: 📑 Generate index page
         run: |
           cd gh-pages
@@ -90,41 +89,30 @@ jobs:
           # Use the output from the previous job
           REPORT_DIR="${{ needs.tests.outputs.report_dir }}"
           
-          cat > index.html << EOF
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Playwright Test Reports</title>
-            <style>
-              body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-              h1 { color: #333; }
-              ul { list-style-type: none; padding: 0; }
-              li { margin: 10px 0; padding: 10px; border: 1px solid #eee; border-radius: 5px; }
-              a { color: #0366d6; text-decoration: none; font-weight: bold; }
-              .date { color: #666; font-size: 0.9em; }
-              .latest { background-color: #f0fff0; border-left: 5px solid #2cbe4e; }
-            </style>
-          </head>
-          <body>
-            <h1>Playwright Test Reports</h1>
-            <p>Select a test run to view its report:</p>
-            <ul>
-          EOF
-
-          # Add the latest run at the top
-          echo "<li class=\"latest\"><a href=\"./$REPORT_DIR/index.html\">Latest Run ($REPORT_DIR)</a> <span class=\"date\">$(date)</span></li>" >> index.html
-
-          # List all other report folders in reverse chronological order
+          # Copy the template file to the deployment directory
+          cp ../.github/report-index-template.html ./index.html.template
+          
+          # Generate the report items HTML
+          REPORT_ITEMS=""
+          
+          # Add the latest run
+          LATEST_ITEM="<li class=\"latest\"><a href=\"./$REPORT_DIR/index.html\">Run: $REPORT_DIR<span class=\"date\">Generated on $(date '+%A, %B %d, %Y at %H:%M')</span></a></li>"
+          REPORT_ITEMS="$REPORT_ITEMS$LATEST_ITEM"
+          
+          # Add previous runs
           find . -maxdepth 1 -type d -name "20*" | sort -r | while read dir; do
             dir_name=$(basename "$dir")
             if [[ "$dir_name" != "$REPORT_DIR" ]]; then
-              echo "<li><a href=\"./$dir_name/index.html\">$dir_name</a></li>" >> index.html
+              ITEM="<li><a href=\"./$dir_name/index.html\">Run: $dir_name<span class=\"date\">Generated on $dir_name</span></a></li>"
+              REPORT_ITEMS="$REPORT_ITEMS$ITEM"
             fi
           done
-
-          echo "</ul></body></html>" >> index.html
+          
+          # Replace the placeholder in the template with the actual items
+          sed "s|<!-- REPORT_ITEMS -->|$REPORT_ITEMS|g" index.html.template > index.html
+          
+          # Remove the template
+          rm index.html.template
 
       - name: 🚀 Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
@@ -140,4 +128,3 @@ jobs:
           echo "## ✅ Test Report Available" >> $GITHUB_STEP_SUMMARY
           echo "[Open Latest Report 🔍](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ needs.tests.outputs.report_dir }}/)" >> $GITHUB_STEP_SUMMARY
           echo "[View All Reports](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/)" >> $GITHUB_STEP_SUMMARY
-          
