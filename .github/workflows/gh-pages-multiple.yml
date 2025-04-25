@@ -61,6 +61,18 @@ jobs:
       - name: 📥 Checkout Repo
         uses: actions/checkout@v4
 
+      # Checkout existing gh-pages to preserve history
+      - name: 📥 Checkout existing gh-pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+        continue-on-error: true  # Won't fail if branch doesn't exist yet
+
+      # Ensure gh-pages directory exists
+      - name: 📂 Create gh-pages directory if needed
+        run: mkdir -p gh-pages
+
       - name: 📦 Download Report Artifact
         uses: actions/download-artifact@v4
         with:
@@ -73,8 +85,11 @@ jobs:
       # Create/update index page with links to all reports
       - name: 📑 Generate index page
         run: |
-          cd gh-pages-branch
-
+          cd gh-pages
+          
+          # Use the output from the previous job
+          REPORT_DIR="${{ needs.tests.outputs.report_dir }}"
+          
           cat > index.html << EOF
           <!DOCTYPE html>
           <html lang="en">
@@ -99,13 +114,13 @@ jobs:
           EOF
 
           # Add the latest run at the top
-          echo "<li class=\"latest\"><a href=\"./${REPORT_DIR}/index.html\">Latest Run (${REPORT_DIR})</a> <span class=\"date\">$(date)</span></li>" >> index.html
+          echo "<li class=\"latest\"><a href=\"./$REPORT_DIR/index.html\">Latest Run ($REPORT_DIR)</a> <span class=\"date\">$(date)</span></li>" >> index.html
 
           # List all other report folders in reverse chronological order
           find . -maxdepth 1 -type d -name "20*" | sort -r | while read dir; do
-            if [[ "$dir" != "./${REPORT_DIR}" ]]; then
-              run_name=$(basename "$dir")
-              echo "<li><a href=\"./$run_name/index.html\">$run_name</a></li>" >> index.html
+            dir_name=$(basename "$dir")
+            if [[ "$dir_name" != "$REPORT_DIR" ]]; then
+              echo "<li><a href=\"./$dir_name/index.html\">$dir_name</a></li>" >> index.html
             fi
           done
 
@@ -122,6 +137,7 @@ jobs:
 
       - name: 🔗 Add report URL to summary
         run: |
-          REPORT_DIR=$(ls gh-pages | grep report- | head -n 1)
           echo "## ✅ Test Report Available" >> $GITHUB_STEP_SUMMARY
-          echo "[Open Report 🔍](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/$REPORT_DIR/)" >> $GITHUB_STEP_SUMMARY
+          echo "[Open Latest Report 🔍](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ needs.tests.outputs.report_dir }}/)" >> $GITHUB_STEP_SUMMARY
+          echo "[View All Reports](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/)" >> $GITHUB_STEP_SUMMARY
+          
