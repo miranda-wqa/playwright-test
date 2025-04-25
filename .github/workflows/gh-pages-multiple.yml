@@ -73,24 +73,19 @@ jobs:
       - name: 📄 Generate Index Page
         run: |
           cd gh-pages
-      
-          # Create the new report item
+          REPORT_DIR=$(ls -d */ | head -n 1 | sed 's|/||')
           NEW_ITEM="<li><a href='./${REPORT_DIR}/index.html'>$REPORT_DIR</a></li>"
-      
-          # Create a new temporary index file
-          echo "<html><body><h1>Test Reports</h1><ul>" > new-index.html
-          echo "$NEW_ITEM" >> new-index.html
-      
+
           if [ -f index.html ]; then
-            # Extract existing list items only (ignore header/footer)
-            sed -n '/<ul>/,/<\/ul>/p' index.html | sed '1d;$d' >> new-index.html
+            OLD_ITEMS=$(sed -n '/<ul>/,/<\/ul>/p' index.html | sed '1d;$d')
+          else
+            OLD_ITEMS=""
           fi
-      
-          # Close the HTML tags
-          echo "</ul></body></html>" >> new-index.html
-      
-          # Replace old index with the new one
-          mv new-index.html index.html
+
+          echo "<html><body><h1>Test Reports</h1><ul>" > index.html
+          echo "$NEW_ITEM" >> index.html
+          echo "$OLD_ITEMS" >> index.html
+          echo "</ul></body></html>" >> index.html
 
       - name: 🚀 Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
