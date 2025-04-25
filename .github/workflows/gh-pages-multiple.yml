@@ -39,7 +39,7 @@ jobs:
 
       - name: 📁 Set Report Folder Name
         id: report-dir
-        run: echo "REPORT_DIR=report-$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_ENV
+        run: echo "REPORT_DIR=Report-$(date +'%Y-%m-%d-%H:%M:%S')" >> $GITHUB_ENV
 
       - name: 📤 Prepare Reports for GH Pages
         run: |
