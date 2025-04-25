@@ -74,7 +74,7 @@ jobs:
         run: |
           cd gh-pages
           REPORT_DIR=$(ls -d */ | head -n 1 | sed 's|/||')
-          NEW_ITEM="<li><a href='$REPORT_DIR/index.html'>$REPORT_DIR</a></li>"
+          NEW_ITEM="<li><a href='./${REPORT_DIR}/index.html'>$REPORT_DIR</a></li>"
 
           if [ -f index.html ]; then
             OLD_ITEMS=$(sed -n '/<ul>/,/<\/ul>/p' index.html | sed '1d;$d')
