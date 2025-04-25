@@ -1,3 +1,5 @@
+#  Using default GitHub Actions for deploy report to GitHub pages
+
 name: 🎭 Run Playwright Tests
 
 on:

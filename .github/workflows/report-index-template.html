@@ -8,15 +8,18 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
+    /* Define theme-specific colors */
     :root {
-      --primary: #4f46e5;
-      --primary-light: #eff6ff;
-      --success: #16a34a;
-      --success-light: #ecfdf5;
-      --text: #1e293b;
-      --text-light: #64748b;
-      --border: #e2e8f0;
-      --background: #4d805fa1;
+    --primary-dark: #4f46e5; /* Dark theme primary color */
+    --primary-light: #4f46e5; /* Light theme primary color */
+    --success-dark: #16a34a;
+    --success-light: #16a34a; /* Adjust success color for light theme */
+    --background-dark: #1f2937; /* Dark theme background */
+    --background-light: #f3f4f6; /* Light theme background */
+    --text-dark: #ffffff; /* White text for dark theme */
+    --text-light: #1e293b; /* Dark text for light theme */
+    --highlight-dark: #2d3748; /* Darker background for the 'latest' tile in dark theme */
+    --highlight-light: #e0e7ff; /* Lighter background for the 'latest' tile in light theme */
     }
 
     /* Dark Theme */
@@ -125,12 +128,12 @@
       margin-top: 0.25rem;
     }
 
-    /* Latest tile with improved readability */
+    /* Latest tile with improved readability for both themes */
     .latest {
-    background-color: var(--primary); /* Use primary color for the background */
-    border-color: var(--success);
+    background-color: var(--highlight-dark); /* Dark background in dark theme, lighter in light */
+    border-color: var(--success-dark);
     position: relative;
-    color: #fff; /* Ensure text is white for better visibility */
+    color: var(--text-dark); /* White text for dark theme */
     }
 
     .latest::before {
@@ -138,12 +141,24 @@
     position: absolute;
     top: -0.5rem;
     right: 1rem;
-    background-color: var(--success); /* Ensure success background stands out */
-    color: #fff; /* White text to improve readability */
+    background-color: var(--success-dark); /* Darker success color for dark theme */
+    color: #fff; /* White text for better visibility */
     font-size: 0.75rem;
     font-weight: 600;
     padding: 0.25rem 0.5rem;
     border-radius: 1rem;
+    }
+
+    /* Light theme adjustments */
+    body.light-theme .latest {
+    background-color: var(--highlight-light); /* Lighter background in light theme */
+    border-color: var(--success-light);
+    color: var(--text-light); /* Dark text for better visibility */
+    }
+
+    body.light-theme .latest::before {
+    background-color: var(--success-light); /* Lighter success color for light theme */
+    color: var(--text-light); /* Dark text for better visibility */
     }
 
     footer {
