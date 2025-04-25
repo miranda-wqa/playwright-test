@@ -47,22 +47,22 @@ jobs:
         run: |
           ls -R gh-pages
 
-          - name: 📄 Generate Index Page
-          run: |
-            cd gh-pages
-            NEW_ITEM="<li><a href='$REPORT_DIR/index.html'>$REPORT_DIR</a></li>"
-        
-            if [ -f index.html ]; then
-              # Extract old list items, skipping the header/footer
-              OLD_ITEMS=$(sed -n '/<ul>/,/<\/ul>/p' index.html | sed '1d;$d')
-            else
-              OLD_ITEMS=""
-            fi
-        
-            echo "<html><body><h1>Test Reports</h1><ul>" > index.html
-            echo "$NEW_ITEM" >> index.html
-            echo "$OLD_ITEMS" >> index.html
-            echo "</ul></body></html>" >> index.html
+      - name: 📄 Generate Index Page
+        run: |
+          cd gh-pages
+          NEW_ITEM="<li><a href='$REPORT_DIR/index.html'>$REPORT_DIR</a></li>"
+      
+          if [ -f index.html ]; then
+            # Extract old list items, skipping the header/footer
+            OLD_ITEMS=$(sed -n '/<ul>/,/<\/ul>/p' index.html | sed '1d;$d')
+          else
+            OLD_ITEMS=""
+          fi
+      
+          echo "<html><body><h1>Test Reports</h1><ul>" > index.html
+          echo "$NEW_ITEM" >> index.html
+          echo "$OLD_ITEMS" >> index.html
+          echo "</ul></body></html>" >> index.html
 
       - name: 🚀 Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
