@@ -53,7 +53,7 @@ jobs:
           cd gh-pages
           
           # Use the output from the previous job
-          REPORT_DIR="${{ needs.tests.outputs.report_dir }}"
+          REPORT_DIR="$REPORT_DIR"
           
           cat > index.html << EOF
           <!DOCTYPE html>
