@@ -55,10 +55,6 @@ jobs:
           done
           echo "</ul></body></html>" >> index.html
   
-      - name: 📊 Generate HTML report
-        run: |
-          npx monocart-reporter -c monocart.config.js --reportDir test-reports/monocart
-
       - name: 🚀 Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
