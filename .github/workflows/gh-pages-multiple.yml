@@ -39,7 +39,8 @@ jobs:
       - name: 📁 Set Report Folder Name
         id: report-dir
         run: |
-          REPORT_DIR=report-$(date +'%Y%m%d%H%M%S')
+          # REPORT_DIR=report-$(date +'%Y%m%d%H%M%S')
+          REPORT_DIR=report_$(date +'%Y-%m-%d_%H-%M-%S')
           echo "REPORT_DIR=$REPORT_DIR" >> $GITHUB_ENV
           echo "::set-output name=report-dir::$REPORT_DIR"
 
