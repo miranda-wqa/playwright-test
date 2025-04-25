@@ -88,31 +88,46 @@ jobs:
       
           REPORT_DIR="${{ needs.tests.outputs.report_dir }}"
       
-          cp ../.github/workflows/report-index-template.html ./index.html.template
-      
-          # Generate the latest run item
+          # Store the latest run's HTML list item
           LATEST_ITEM="<li class=\"latest\"><a href=\"./$REPORT_DIR/index.html\">Run: $REPORT_DIR<span class=\"date\">Generated on $(date '+%A, %B %d, %Y at %H:%M')</span></a></li>"
       
-          # Initialize the REPORT_ITEMS with the latest run
-          REPORT_ITEMS="$LATEST_ITEM"
+          # If there's already an index.html, extract previous <li> items (excluding current)
+          if [ -f index.html ]; then
+            PREVIOUS_ITEMS=$(grep -o '<li>.*</li>' index.html | grep -v "$REPORT_DIR")
+          else
+            PREVIOUS_ITEMS=""
+          fi
       
-          # Accumulate previous items into a temp variable first
-          PREVIOUS_ITEMS=""
-          for dir in $(find . -maxdepth 1 -type d -name "20*" | sort -r); do
-            dir_name=$(basename "$dir")
-            if [[ "$dir_name" != "$REPORT_DIR" ]]; then
-              ITEM="<li><a href=\"./$dir_name/index.html\">Run: $dir_name<span class=\"date\">Generated on $dir_name</span></a></li>"
-              PREVIOUS_ITEMS="$PREVIOUS_ITEMS$ITEM"
-            fi
-          done
+          # Combine new + old items
+          REPORT_ITEMS="$LATEST_ITEM"$'\n'"$PREVIOUS_ITEMS"
       
-          # Combine latest + previous
-          REPORT_ITEMS="$REPORT_ITEMS$PREVIOUS_ITEMS"
-      
-          # Replace the placeholder in the HTML template
-          sed "s|<!-- REPORT_ITEMS -->|$REPORT_ITEMS|g" index.html.template > index.html
-      
-          rm index.html.template
+          # Rebuild the index page
+          cat > index.html <<EOF
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Playwright Test Reports</title>
+            <style>
+              body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+              h1 { color: #333; }
+              ul { list-style-type: none; padding: 0; }
+              li { margin: 10px 0; padding: 10px; border: 1px solid #eee; border-radius: 5px; }
+              a { color: #0366d6; text-decoration: none; font-weight: bold; }
+              .date { color: #666; font-size: 0.9em; }
+              .latest { background-color: #f0fff0; border-left: 5px solid #2cbe4e; }
+            </style>
+          </head>
+          <body>
+            <h1>Playwright Test Reports</h1>
+            <p>Select a test run to view its report:</p>
+            <ul>
+              $REPORT_ITEMS
+            </ul>
+          </body>
+          </html>
+          EOF
 
       - name: 🚀 Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
