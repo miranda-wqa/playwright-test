@@ -19,14 +19,15 @@ const allDirs = fs
 let reportItems = "";
 
 // Latest run
-const now = new Date().toLocaleString("en-US", {
+const now = new Intl.DateTimeFormat("en-US", {
   weekday: "long",
   year: "numeric",
   month: "long",
   day: "numeric",
   hour: "2-digit",
   minute: "2-digit",
-});
+  timeZone: "America/New_York"
+}).format(new Date());
 reportItems += `<li class="latest"><a href="./${REPORT_DIR}/index.html">Run: ${REPORT_DIR} <span class="date">Generated on ${now}</span></a></li>`;
 
 // Older runs
