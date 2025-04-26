@@ -12,9 +12,7 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
-
+  
 concurrency:
   group: "pages"
   cancel-in-progress: false
@@ -35,6 +33,21 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
+
+      - name: ♻️ Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: ${{ runner.os }}-node-
+
+      - name: ♻️ Cache Playwright Browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-browsers-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            playwright-browsers-${{ runner.os }}-
 
       - name: 🔧 Install dependencies
         run: npm ci
@@ -64,23 +77,23 @@ jobs:
         with:
           name: report-folder
           path: package/
+        if: hashFiles('package/**/*') != ''
 
-      - name: 🖥️ Install CTRF CLI
-        run: npm install -g github-actions-ctrf
-
-      - name: 📑 Publish CTRF Test Summary Results
-        run: npx github-actions-ctrf test-reports/ctrf/ctrf-report.json
+      - name: 🖥️ 📑 Install and Publish CTRF Test Summary Results
+        run: |
+          npm install -g github-actions-ctrf
+          github-actions-ctrf test-reports/ctrf/ctrf-report.json
         if: always()
           
       - name: 🎭 Add Test Summary HTML Table
         if: always()
         run: node ./github-test-summary.js
-  
 
   deploy:
     name: 🚀 Deploy Report to GitHub Pages
     runs-on: ubuntu-latest
     needs: tests
+    if: needs.tests.outputs.report_dir != ''
 
     steps:
       - name: 📥 Checkout Repo
@@ -101,9 +114,7 @@ jobs:
         with:
           name: report-folder
           path: gh-pages
-
-      - name: 📂 List files in gh-pages
-        run: ls -R gh-pages
+        continue-on-error: true
 
       - name: 📑 Generate index page
         run: node ./resources/generate-html.js
