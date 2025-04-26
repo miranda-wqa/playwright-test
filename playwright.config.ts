@@ -26,11 +26,13 @@ export default defineConfig({
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['html', { outputFolder: path.resolve('test-reports/playwright-report') }],
-    ['monocart-reporter', { outputFile: path.resolve('test-reports/monocart/index.html'),
+    ['monocart-reporter', { 
+      outputFile: path.resolve('test-reports/monocart/index.html'),
       name: 'Test Report',
-      timezone: 'America/New_York' }],
+      timezone: 'America/New_York',
+    }],
     ['json', { outputFile: path.resolve('test-reports/playwright-report.json')}],
-    ['playwright-ctrf-json-reporter', {outputFile: 'ctrf-report.json', outputDir: path.resolve('test-reports/ctrf/')}]
+    ['playwright-ctrf-json-reporter', {outputFile: 'ctrf-report.json', outputDir: path.resolve('test-reports')}]
   ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {

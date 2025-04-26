@@ -82,7 +82,7 @@ jobs:
       - name: 🖥️ 📑 Install and Publish CTRF Test Summary Results
         run: |
           npm install -g github-actions-ctrf
-          github-actions-ctrf test-reports/ctrf/ctrf-report.json
+          github-actions-ctrf test-reports/ctrf-report.json
         if: always()
           
       - name: 🎭 Add Test Summary HTML Table

@@ -69,7 +69,7 @@ jobs:
         run: npm install -g github-actions-ctrf
 
       - name: 📑 Publish CTRF Test Summary Results
-        run: npx github-actions-ctrf test-reports/ctrf/ctrf-report.json
+        run: npx github-actions-ctrf test-reports/ctrf-report.json
         if: always()
           
       - name: 🎭 Add Test Summary HTML Table
