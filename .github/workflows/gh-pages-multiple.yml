@@ -92,39 +92,9 @@ jobs:
         run: ls -R gh-pages
 
       - name: 📑 Generate index page
-        run: |
-          cd gh-pages
-      
-          # Use the output from the previous job
-            REPORT_DIR="${{ needs.tests.outputs.report_dir }}"
-            
-            # Copy the template file to the deployment directory
-            cp ../resources/report-design.html ./index.html.template
-            
-            # Generate the list of directories in a variable
-            DIRS=$(find . -maxdepth 1 -type d -name "20*" | sort -r)
-
-            # Start building the REPORT_ITEMS
-            REPORT_ITEMS=""
-
-            # Add latest run first
-            LATEST_ITEM="<li class=\"latest\"><a href=\"./$REPORT_DIR/index.html\">Run: $REPORT_DIR <span class=\"date\">Generated on $(date '+%A, %B %d, %Y at %H:%M')</span></a></li>"
-            REPORT_ITEMS="$REPORT_ITEMS$LATEST_ITEM"
-
-            # Append previous runs — using a subshell-safe method
-            while read dir; do
-              dir_name=$(basename "$dir")
-              if [[ "$dir_name" != "$REPORT_DIR" ]]; then
-                ITEM="<li><a href=\"./$dir_name/index.html\">Run: $dir_name <span class=\"date\">Generated on $dir_name</span></a></li>"
-                REPORT_ITEMS="$REPORT_ITEMS$ITEM"
-              fi
-            done <<< "$DIRS"
-
-            # Replace the placeholder in the template with the actual items
-            sed "s|<!-- REPORT_ITEMS -->|$REPORT_ITEMS|g" index.html.template > index.html
-            
-            # Clean up
-            rm index.html.template
+        run: node ./resources/generate-html.js
+        env:
+          REPORT_DIR: ${{ env.REPORT_DIR }}
 
       - name: 🚀 Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
