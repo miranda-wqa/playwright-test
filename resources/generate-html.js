@@ -33,21 +33,11 @@ reportItems += `<li class="latest"><a href="./${REPORT_DIR}/index.html">Run: ${R
 // Older runs
 for (const dir of allDirs) {
   if (dir !== REPORT_DIR) {
-    const dirDatePart = dir.split('_').slice(0, 2).join('_');
-    const dateObj = new Date(dirDatePart.replace(/_/g, ' ').replace(/-/g, ':').replace(' ', 'T'));
-    const formattedDate = new Intl.DateTimeFormat("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZone: "America/New_York"
-    }).format(dateObj);
-
-    reportItems += `<li><a href="./${dir}/index.html">Run: ${dir} <span class="date">Generated on ${formattedDate}</span></a></li>`;
+    
+    reportItems += `<li><a href="./${dir}/index.html">Run: ${dir} <span class="date">Generated on ${dir}</span></a></li>`;
   }
 }
+
 // Replace placeholder
 const finalHtml = template.replace("<!-- REPORT_ITEMS -->", reportItems);
 fs.writeFileSync(outputPath, finalHtml, "utf-8");
