@@ -74,10 +74,11 @@ jobs:
 
       - name: 📦 Upload Report Artifact
         uses: actions/upload-artifact@v4
+        if: hashFiles('package/**/*') != ''
         with:
           name: report-folder
           path: package/
-        if: hashFiles('package/**/*') != ''
+          retention-days: 1
 
       - name: 🖥️ 📑 Install and Publish CTRF Test Summary Results
         run: |
