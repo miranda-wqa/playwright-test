@@ -25,16 +25,26 @@ function formatDate(date) {
 
 // Function to format directory date string to a nice readable date
 function formatDirectoryDate(dirName) {
-  // Extract date and time information from the directory name format: YYYY-MM-DD_HH-MM-SS_runid
-  const match = dirName.match(/^(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})_/);
+  // Try to match format: YYYY-MM-DD_HH-MM-SS_runid
+  let match = dirName.match(/^(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})(?:_\d+)?$/);
+  
+  if (!match) {
+    // Try alternative format: YYYY-MM-DD_HH-MM-SS (without run ID)
+    match = dirName.match(/^(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})$/);
+  }
+  
+  if (!match) {
+    // Try shorter format: YYYY-MM-DD_HH-MM
+    match = dirName.match(/^(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})$/);
+  }
   
   if (match) {
-    const [_, year, month, day, hour, minute, second] = match;
-    const date = new Date(year, month - 1, day, hour, minute, second);
+    const [_, year, month, day, hour, minute, second = 0] = match;
+    const date = new Date(year, month - 1, day, hour, minute, second || 0);
     return formatDate(date);
   }
   
-  // Fallback if directory name doesn't match expected format
+  // Fallback if directory name doesn't match any expected format
   return dirName;
 }
 
