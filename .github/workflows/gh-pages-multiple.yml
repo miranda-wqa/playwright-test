@@ -2,7 +2,7 @@
 # Using Multiple workflow jobs
 # main workflow
 
-name: 🎭 GitHub Pages - Multiple Jobs
+name: 🎭 Playwright Tests
 
 on:
   push:
