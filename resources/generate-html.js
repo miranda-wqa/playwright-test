@@ -23,7 +23,6 @@ function formatDate(date) {
   }).format(date);
 }
 
-// Function to format directory date string to a nice readable date
 function formatDirectoryDate(dirName) {
   // Try to match format: YYYY-MM-DD_HH-MM-SS_runid
   let match = dirName.match(/^(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})(?:_\d+)?$/);
@@ -40,7 +39,9 @@ function formatDirectoryDate(dirName) {
   
   if (match) {
     const [_, year, month, day, hour, minute, second = 0] = match;
-    const date = new Date(year, month - 1, day, hour, minute, second || 0);
+    // Create date string in ISO format and explicitly set timezone
+    const dateString = `${year}-${month}-${day}T${hour}:${minute}:${second || '00'}-04:00`;
+    const date = new Date(dateString);
     return formatDate(date);
   }
   
