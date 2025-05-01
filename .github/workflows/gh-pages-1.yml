@@ -126,7 +126,7 @@ jobs:
           cd gh-pages
       
           # Create the new report item
-          NEW_ITEM="<li><a href='./$REPORT_DIR/index.html\">Run: $REPORT_DIR <span class=\"date\">Generated on $(date '+%A, %B %d, %Y at %H:%M')</span></a></li>"
+          NEW_ITEM="<li><a href='./${REPORT_DIR}/index.html'>Run: ${REPORT_DIR} <span class=\"date\">Generated on $(date '+%A, %B %d, %Y at %I:%M %p')</span></a></li>"
       
           # Create a new temporary index file
           echo "<html><body><h1>Test Reports</h1><ul>" > new-index.html
