@@ -136,8 +136,9 @@ jobs:
           for dir in */ ; do
             dir="${dir%/}"
             if [[ "$dir" != "$REPORT_DIR" && "$dir" =~ ^20[0-9]{2}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2}_[0-9]+$ ]]; then
-              ts=$(echo "$dir" | cut -d_ -f1,2 | tr '_' ' ')
-              formatted_date=$(date -d "$ts" "+%A, %B %d, %Y at %I:%M %p")
+              ts_date=$(echo "$dir" | cut -d_ -f1)
+              ts_time=$(echo "$dir" | cut -d_ -f2 | tr '-' ':')
+              formatted_date=$(date -d "${ts_date} ${ts_time}" "+%A, %B %d, %Y at %I:%M %p")
               echo "<li><a href='./$dir/index.html'>Run: $dir <span class=\"date\">Generated on $formatted_date</span></a></li>" >> new-index.html
             fi
           done
