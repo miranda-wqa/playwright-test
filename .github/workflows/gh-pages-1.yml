@@ -126,21 +126,22 @@ jobs:
           cd gh-pages
       
           # Create the new report item
-          NEW_ITEM="<li><a href='./${REPORT_DIR}/index.html'>Run: ${REPORT_DIR} <span class=\"date\">Generated on $(TZ="America/New_York" date '+%A, %B %d, %Y at %I:%M %p')</span></a></li>"      
-          
+          NEW_ITEM="<li><a href='./${REPORT_DIR}/index.html'>Run: ${REPORT_DIR} <span class=\"date\">Generated on $(TZ="America/New_York" date '+%A, %B %d, %Y at %I:%M %p')</span></a></li>"
+      
           # Create a new temporary index file
           echo "<html><body><h1>Test Reports</h1><ul>" > new-index.html
           echo "$NEW_ITEM" >> new-index.html
       
-          if [ -f index.html ]; then
-            # Extract existing list items only (ignore header/footer)
-            sed -n '/<ul>/,/<\/ul>/p' index.html | sed '1d;$d' >> new-index.html
-          fi
+          # Add only the 50 most recent previous report directories
+          for dir in $(ls -1d 20*/ | grep -v "^${REPORT_DIR}/" | sort -r | head -n 50); do
+            dir="${dir%/}"
+            ts_date=$(echo "$dir" | cut -d_ -f1)
+            ts_time=$(echo "$dir" | cut -d_ -f2 | tr '-' ':')
+            formatted_date=$(TZ="America/New_York" date -d "${ts_date} ${ts_time}" "+%A, %B %d, %Y at %I:%M %p" || echo "$dir")
+            echo "<li><a href='./$dir/index.html'>Run: $dir <span class=\"date\">Generated on $formatted_date</span></a></li>" >> new-index.html
+          done
       
-          # Close the HTML tags
           echo "</ul></body></html>" >> new-index.html
-      
-          # Replace old index with the new one
           mv new-index.html index.html
   
       - name: 🚀 Deploy to GitHub Pages
