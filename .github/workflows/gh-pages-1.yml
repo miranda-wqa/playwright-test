@@ -132,8 +132,8 @@ jobs:
           echo "<html><body><h1>Test Reports</h1><ul>" > new-index.html
           echo "$NEW_ITEM" >> new-index.html
       
-          # Add only the 50 most recent previous report directories
-          for dir in $(ls -1d 20*/ | grep -v "^${REPORT_DIR}/" | sort -r | head -n 50); do
+          # Add only the 10 most recent previous report directories
+          for dir in $(ls -1d 20*/ | grep -v "^${REPORT_DIR}/" | sort -r | head -n 10); do
             dir="${dir%/}"
             ts_date=$(echo "$dir" | cut -d_ -f1)
             ts_time=$(echo "$dir" | cut -d_ -f2 | tr '-' ':')
