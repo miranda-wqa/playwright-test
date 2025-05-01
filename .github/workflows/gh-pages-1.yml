@@ -97,7 +97,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: tests
     if: needs.tests.outputs.report_dir != ''
-
+    
     steps:
       - name: 📥 Checkout Repo
         uses: actions/checkout@v4
@@ -120,6 +120,8 @@ jobs:
         continue-on-error: true
 
       - name: 📑 Generate index page
+        env:
+            REPORT_DIR: ${{ needs.tests.outputs.report_dir }}
         run: |
           cd gh-pages
       
