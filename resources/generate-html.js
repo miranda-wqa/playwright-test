@@ -13,6 +13,10 @@ const outputPath = path.join(ghPagesPath, "index.html");
 
 const template = fs.readFileSync(templatePath, "utf-8");
 
+if (!fs.existsSync(ghPagesPath)) {
+  fs.mkdirSync(ghPagesPath, { recursive: true });
+}
+
 // Create a consistent date formatter function
 function formatDate(date) {
   return new Intl.DateTimeFormat("en-US", {
