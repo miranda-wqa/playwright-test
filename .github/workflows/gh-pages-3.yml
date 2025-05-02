@@ -1,8 +1,8 @@
-# Using default github pages for deployment to pages - Deploy to GitHub Pages (Default method)
+# Using default github pages for deployment to pages
 # Using Multiple workflow jobs
 # main workflow
 
-name: 🎭 Playwright Tests - 2
+name: 🎭 Playwright Tests - 3
 
 on:
   # push:
@@ -97,33 +97,28 @@ jobs:
     runs-on: ubuntu-latest
     needs: tests
     if: needs.tests.outputs.report_dir != ''
+    permissions:
+          contents: read
+          pages: write
+          id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - name: 📥 Checkout Repo
-        uses: actions/checkout@v4
-
-      - name: 📥 Checkout existing gh-pages branch
-        uses: actions/checkout@v4
-        with:
-          ref: gh-pages
-          path: gh-pages
-        continue-on-error: true
-
-      - name: 📂 Create gh-pages directory if needed
-        run: mkdir -p gh-pages
-
       - name: 📦 Download Report Artifact
         uses: actions/download-artifact@v4
         with:
           name: report-folder
-          path: gh-pages
+          path: ./public
         continue-on-error: true
 
       - name: 📑 Generate index page
         env:
           REPORT_DIR: ${{ needs.tests.outputs.report_dir }}
         run: |
-          cd gh-pages
+          cd public
       
           # Create the new report item
           NEW_ITEM="<li><a href='./${REPORT_DIR}/index.html'>Run: ${REPORT_DIR} <span class=\"date\">Generated on $(TZ="America/New_York" date '+%A, %B %d, %Y at %I:%M %p')</span></a></li>"
@@ -144,28 +139,17 @@ jobs:
           echo "</ul></body></html>" >> new-index.html
           mv new-index.html index.html
   
-      - name: 🚀 Deploy to GitHub Pages (Default method)
-        env:
-          REPORT_DIR: ${{ needs.tests.outputs.report_dir }}
-          REPO: ${{ github.repository }}
-          TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          cd gh-pages
+      - name: 📦 Upload artifact for GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./public
 
-          # Re-initialize the git repo if needed
-          git init
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git remote remove origin || true
-          git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
-          git add .
-          git commit -m "Deploy report for ${{ needs.tests.outputs.report_dir }}" || echo "Nothing to commit"
-          git push origin HEAD:gh-pages
+      - name: 🚀 Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
 
       - name: 🔗 Add report URL to summary
         run: |
           echo "## ✅ Test Report Available" >> $GITHUB_STEP_SUMMARY
           echo "[Open Latest Report 🔍](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ needs.tests.outputs.report_dir }}/)" >> $GITHUB_STEP_SUMMARY
           echo "[View All Reports](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/)" >> $GITHUB_STEP_SUMMARY
-
-          
