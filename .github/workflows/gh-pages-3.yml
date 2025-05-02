@@ -119,7 +119,7 @@ jobs:
         run: |
           mkdir -p public
           cp -r old-pages/* public/ || true
-          cp -r new-report/* public/
+          cp -r new-report/package/* public/
                   
       - name: 📑 Generate index page
         env:
