@@ -120,7 +120,12 @@ jobs:
           mkdir -p public
           cp -r old-pages/* public/ || true
           cp -r new-report/* public/
-                  
+
+      - name: 📥 Checkout Main Branch
+        uses: actions/checkout@v4
+        with:
+          path: main
+          
       - name: 📑 Generate index page
         env:
           REPORT_DIR: ${{ needs.tests.outputs.report_dir }}
