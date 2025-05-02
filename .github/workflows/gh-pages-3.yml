@@ -80,9 +80,7 @@ jobs:
         run: |
           mkdir -p package/${{ steps.report-dir.outputs.name }}
           cp -r test-reports/monocart/* package/${{ steps.report-dir.outputs.name }} || echo "No reports to copy"
-        env:
-            REPORT_DIR: ${{ steps.report-dir.outputs.name }}
-
+        
       - name: 📦 Upload Report Artifact
         uses: actions/upload-artifact@v4
         if: hashFiles('package/**/*') != ''
@@ -97,11 +95,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: tests
     if: needs.tests.outputs.report_dir != ''
-    permissions:
-          contents: read
-          pages: write
-          id-token: write
-
+    
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -112,7 +106,6 @@ jobs:
         with:
           name: report-folder
           path: ./public
-        continue-on-error: true
 
       - name: 📑 Generate index page
         env:
@@ -120,24 +113,23 @@ jobs:
         run: |
           cd public
       
-          # Create the new report item
-          NEW_ITEM="<li><a href='./${REPORT_DIR}/index.html'>Run: ${REPORT_DIR} <span class=\"date\">Generated on $(TZ="America/New_York" date '+%A, %B %d, %Y at %I:%M %p')</span></a></li>"
+          # Create new report item
+          NEW_ITEM="<li><a href='./${REPORT_DIR}/index.html'>Run: ${REPORT_DIR} <span class=\"date\">Generated on $(TZ=\"America/New_York\" date '+%A, %B %d, %Y at %I:%M %p')</span></a></li>"
       
-          # Create a new temporary index file
-          echo "<html><body><h1>Test Reports</h1><ul>" > new-index.html
-          echo "$NEW_ITEM" >> new-index.html
+          # Extract old items, skip duplicates of current report
+          if [[ -f index.html ]]; then
+            grep '<li><a href=' index.html | grep -v "./${REPORT_DIR}/index.html" > old-items.txt || true
+          else
+            touch old-items.txt
+          fi
       
-          # Add only the 100 most recent previous report directories
-          for dir in $(ls -1d 20*/ | grep -v "^${REPORT_DIR}/" | sort -r | head -n 100); do
-            dir="${dir%/}"
-            ts_date=$(echo "$dir" | cut -d_ -f1)
-            ts_time=$(echo "$dir" | cut -d_ -f2 | tr '-' ':')
-            formatted_date=$(TZ="America/New_York" date -d "${ts_date} ${ts_time}" "+%A, %B %d, %Y at %I:%M %p" || echo "$dir")
-            echo "<li><a href='./$dir/index.html'>Run: $dir <span class=\"date\">Generated on $formatted_date</span></a></li>" >> new-index.html
-          done
-      
-          echo "</ul></body></html>" >> new-index.html
-          mv new-index.html index.html
+          # Create new index file
+          {
+            echo "<html><body><h1>Test Reports</h1><ul>"
+            echo "$NEW_ITEM"
+            cat old-items.txt | head -n 99  # Only keep the most recent 99 after the new one
+            echo "</ul></body></html>"
+          } > index.html
   
       - name: 📦 Upload artifact for GitHub Pages
         uses: actions/upload-pages-artifact@v3
