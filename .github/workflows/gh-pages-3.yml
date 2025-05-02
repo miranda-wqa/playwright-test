@@ -134,7 +134,9 @@ jobs:
       - name: 📑 Generate index page
         env:
           REPORT_DIR: ${{ needs.tests.outputs.report_dir }}
-        run: node ./resources/generate-html.js
+        run: |
+          cd main
+          node ./resources/generate-html.js
 
       - name: 📦 Upload artifact for GitHub Pages
         uses: actions/upload-pages-artifact@v3
