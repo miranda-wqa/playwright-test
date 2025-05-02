@@ -1,8 +1,8 @@
-# Using gh-pages for deployment to pages
+# Using default github pages for deployment to pages
 # Using Multiple workflow jobs
 # main workflow
 
-name: 🎭 Playwright Tests - 1
+name: 🎭 Playwright Tests - 2
 
 on:
   # push:
