@@ -31,6 +31,8 @@ jobs:
     steps:
       - name: 📥 Checkout Code
         uses: actions/checkout@v4
+        with:
+            fetch-depth: 0
 
       - name: 🚠 Setup Node.js
         uses: actions/setup-node@v4
@@ -126,6 +128,9 @@ jobs:
           cp -r old-pages/* public/ || true
           cp -r new-report/* public/
 
+      - name: 🧐 Check current working directory
+        run: pwd
+
       - name: 📑 Generate index page
         env:
           REPORT_DIR: ${{ needs.tests.outputs.report_dir }}
@@ -135,6 +140,7 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./public
+          retention-days: 5
 
       - name: 🚀 Deploy to GitHub Pages
         id: deployment
