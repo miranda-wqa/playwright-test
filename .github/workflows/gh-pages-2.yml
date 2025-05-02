@@ -144,14 +144,26 @@ jobs:
           echo "</ul></body></html>" >> new-index.html
           mv new-index.html index.html
   
-      - name: 🚀 Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: gh-pages
-          publish_branch: gh-pages
-          enable_jekyll: false
-          keep_files: true
+      - name: 🚀 Deploy to GitHub Pages (Default method)
+        env:
+          REPORT_DIR: ${{ needs.tests.outputs.report_dir }}
+          REPO: ${{ github.repository }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd gh-pages
+
+          # Initialize new git repo if needed
+          git init
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git remote add origin https://x-access-token:${TOKEN}@github.com/${REPO}.git
+          git checkout -b gh-pages
+
+          # Add and commit
+          git add .
+          git commit -m "Deploy report: $REPORT_DIR"
+          git push --force origin gh-pages
 
       - name: 🔗 Add report URL to summary
         run: |
