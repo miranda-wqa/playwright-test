@@ -154,17 +154,13 @@ jobs:
 
           # Re-initialize the git repo if needed
           git init
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # Remove existing origin if it exists, then add again
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
           git remote remove origin || true
-          git remote add origin https://x-access-token:${TOKEN}@github.com/${REPO}.git
-          git checkout -b gh-pages
-
+          git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
           git add .
-          git commit -m "Deploy report: $REPORT_DIR"
-          git push --force origin gh-pages
+          git commit -m "Deploy report for ${{ needs.tests.outputs.report_dir }}" || echo "Nothing to commit"
+          git push origin HEAD:gh-pages
 
       - name: 🔗 Add report URL to summary
         run: |
