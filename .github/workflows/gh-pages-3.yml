@@ -109,6 +109,11 @@ jobs:
           ref: gh-pages
           path: old-pages
 
+      - name: 📥 Checkout Main Branch
+        uses: actions/checkout@v4
+        with:
+          path: main
+            
       - name: 📦 Download Report Artifact
         uses: actions/download-artifact@v4
         with:
@@ -121,11 +126,6 @@ jobs:
           cp -r old-pages/* public/ || true
           cp -r new-report/* public/
 
-      - name: 📥 Checkout Main Branch
-        uses: actions/checkout@v4
-        with:
-          path: main
-          
       - name: 📑 Generate index page
         env:
           REPORT_DIR: ${{ needs.tests.outputs.report_dir }}
