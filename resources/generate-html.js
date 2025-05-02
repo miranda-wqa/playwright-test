@@ -6,15 +6,15 @@ const path = require("path");
 // Environment variable passed from workflow
 const REPORT_DIR = process.env.REPORT_DIR;
 
-// const ghPagesPath = path.join(__dirname, "..", "gh-pages"); // when using gh-pages branch
-const ghPagesPath = path.join(__dirname, "..", "public"); // when using default GitHub pages on main branch
+// const pagesPath = path.join(__dirname, "..", "gh-pages"); // when using gh-pages branch
+const pagesPath = path.join(__dirname, "..", "public"); // when using default GitHub pages on main branch
 const templatePath = path.join(__dirname, "..", "resources", "report-design.html");
-const outputPath = path.join(ghPagesPath, "index.html");
+const outputPath = path.join(pagesPath, "index.html");
 
 const template = fs.readFileSync(templatePath, "utf-8");
 
-if (!fs.existsSync(ghPagesPath)) {
-  fs.mkdirSync(ghPagesPath, { recursive: true });
+if (!fs.existsSync(pagesPath)) {
+  fs.mkdirSync(pagesPath, { recursive: true });
 }
 
 // Create a consistent date formatter function
@@ -57,7 +57,7 @@ function formatDirectoryDate(dirName) {
 }
 
 const allDirs = fs
-  .readdirSync(ghPagesPath, { withFileTypes: true })
+  .readdirSync(pagesPath, { withFileTypes: true })
   .filter((d) => d.isDirectory() && d.name.match(/^20/))
   .map((d) => d.name)
   .sort((a, b) => b.localeCompare(a)); // Descending
