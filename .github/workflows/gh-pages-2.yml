@@ -2,7 +2,7 @@
 # Using Multiple workflow jobs
 # main workflow
 
-name: 🎭 Playwright Tests - 3
+name: 🎭 Playwright Tests - 2
 
 on:
   # push:
