@@ -6,7 +6,8 @@ const path = require("path");
 // Environment variable passed from workflow
 const REPORT_DIR = process.env.REPORT_DIR;
 
-const ghPagesPath = path.join(__dirname, "..", "gh-pages");
+// const ghPagesPath = path.join(__dirname, "..", "gh-pages"); // when using gh-pages branch
+const ghPagesPath = path.join(__dirname, "..", "public"); // when using default GitHub pages on main branch
 const templatePath = path.join(__dirname, "..", "resources", "report-design.html");
 const outputPath = path.join(ghPagesPath, "index.html");
 
