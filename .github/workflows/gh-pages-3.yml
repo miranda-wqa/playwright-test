@@ -124,25 +124,8 @@ jobs:
       - name: 📑 Generate index page
         env:
           REPORT_DIR: ${{ needs.tests.outputs.report_dir }}
-        run: |
-          export TZ="America/New_York"
-          cd public
-      
-          # Copy the previous index from the GitHub Pages branch
-          cp ../gh-pages/index.html . || touch index.html
-      
-          formatted_time=$(date '+%A, %B %d, %Y at %I:%M %p')
-          NEW_ITEM="<li><a href='./${REPORT_DIR}/index.html'>Run: ${REPORT_DIR} <span class=\"date\">Generated on $formatted_time</span></a></li>"
-      
-          grep '<li><a href=' index.html | grep -v "./${REPORT_DIR}/index.html" > old-items.txt || true
-      
-          {
-            echo "<html><body><h1>Test Reports</h1><ul>"
-            echo "$NEW_ITEM"
-            head -n 99 old-items.txt
-            echo "</ul></body></html>"
-          } > index.html
-  
+        run: node ./resources/generate-html.js
+
       - name: 📦 Upload artifact for GitHub Pages
         uses: actions/upload-pages-artifact@v3
         with:
