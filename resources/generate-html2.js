@@ -4,17 +4,23 @@ const path = require("path");
 // Environment variable passed from workflow
 const REPORT_DIR = process.env.REPORT_DIR;
 
-const pagesPath = path.join(__dirname, "..", "public"); // when using default GitHub pages on main branch
+if (!REPORT_DIR) {
+  console.error("ERROR: REPORT_DIR environment variable not set!");
+  process.exit(1);
+}
+
+const pagesPath = path.join(__dirname, "..", "public");
 const templatePath = path.join(__dirname, "..", "resources", "report-design.html");
 const outputPath = path.join(pagesPath, "index.html");
 
-const template = fs.readFileSync(templatePath, "utf-8");
-
+// Ensure public directory exists
 if (!fs.existsSync(pagesPath)) {
   fs.mkdirSync(pagesPath, { recursive: true });
 }
 
-// Create a consistent date formatter function
+const template = fs.readFileSync(templatePath, "utf-8");
+
+// Date formatter function
 function formatDate(date) {
   return new Intl.DateTimeFormat("en-US", {
     weekday: "long",
@@ -53,44 +59,29 @@ function formatDirectoryDate(dirName) {
   return dirName;
 }
 
-// Get all directories in the pages path
+// Get all existing report directories - EXCLUDING the newest one which might not exist yet
 const allDirs = fs
   .readdirSync(pagesPath, { withFileTypes: true })
-  .filter((d) => d.isDirectory() && d.name.match(/^20/))
+  .filter((d) => d.isDirectory() && d.name.match(/^20/) && d.name !== REPORT_DIR)
   .map((d) => d.name)
   .sort((a, b) => b.localeCompare(a)); // Descending
 
-// Check if REPORT_DIR exists in the pagesPath
-const reportDirExists = fs.existsSync(path.join(pagesPath, REPORT_DIR));
-const reportDirInList = allDirs.includes(REPORT_DIR);
-
-// Create an array with all directories, ensuring REPORT_DIR is first if it exists
-let sortedDirs = [...allDirs];
-if (reportDirExists && !reportDirInList) {
-  sortedDirs.unshift(REPORT_DIR);
-} else if (reportDirInList) {
-  // If REPORT_DIR is in allDirs, make sure it's first
-  sortedDirs = [REPORT_DIR, ...sortedDirs.filter(dir => dir !== REPORT_DIR)];
-}
-
+// Build the HTML for report items
 let reportItems = "";
 
-// Generate HTML list items for all directories
-for (let i = 0; i < sortedDirs.length; i++) {
-  const dir = sortedDirs[i];
+// Critical change: Always add the current REPORT_DIR as the latest, regardless of
+// whether it exists on disk yet (it will by the time the page is viewed)
+const now = formatDate(new Date());
+reportItems += `<li class="latest"><a href="./${REPORT_DIR}/index.html">Run: ${REPORT_DIR} <span class="date">Generated on ${now}</span></a></li>`;
+
+// Add all other reports
+for (const dir of allDirs) {
   const formattedDate = formatDirectoryDate(dir);
-  
-  // Add the "latest" class only to the first item
-  if (i === 0) {
-    reportItems += `<li class="latest"><a href="./${dir}/index.html">Run: ${dir} <span class="date">Generated on ${formattedDate}</span></a></li>`;
-  } else {
-    reportItems += `<li><a href="./${dir}/index.html">Run: ${dir} <span class="date">Generated on ${formattedDate}</span></a></li>`;
-  }
+  reportItems += `<li><a href="./${dir}/index.html">Run: ${dir} <span class="date">Generated on ${formattedDate}</span></a></li>`;
 }
 
 // Replace placeholder
 const finalHtml = template.replace("<!-- REPORT_ITEMS -->", reportItems);
 fs.writeFileSync(outputPath, finalHtml, "utf-8");
 
-// Log completion
-console.log(`Generated index.html with ${sortedDirs.length} report links. Latest report: ${sortedDirs[0]}`);
+console.log(`Generated index.html with latest report (${REPORT_DIR}) and ${allDirs.length} previous reports.`);
