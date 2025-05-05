@@ -22,8 +22,7 @@ const template = fs.readFileSync(templatePath, "utf-8");
 // Format date specifically for Eastern Time
 function formatEasternTime(date) {
   try {
-    // Force Eastern Time zone regardless of server timezone
-    return date.toLocaleString("en-US", {
+    return new Date(date).toLocaleString("en-US", {
       weekday: "long",
       year: "numeric", 
       month: "long", 
@@ -41,9 +40,7 @@ function formatEasternTime(date) {
 
 // Get current time in Eastern Time Zone
 function getCurrentEasternTime() {
-  // Using UTC date and forcing display as Eastern
-  const now = new Date();
-  return formatEasternTime(now);
+  return formatEasternTime(new Date());
 }
 
 // Parse date from directory name and return Date object
@@ -64,15 +61,9 @@ function parseDirectoryDate(dirName) {
   if (match) {
     const [_, year, month, day, hour, minute, second = 0] = match;
     try {
-      // Create a Date object correctly representing the time in the directory name
-      const date = new Date(
-        parseInt(year, 10),
-        parseInt(month, 10) - 1, // JavaScript months are 0-based
-        parseInt(day, 10),
-        parseInt(hour, 10),
-        parseInt(minute, 10),
-        parseInt(second, 10)
-      );
+      // Create date string in ISO format with explicit timezone
+      const dateStr = `${year}-${month}-${day}T${hour}:${minute}:${second}-04:00`;
+      const date = new Date(dateStr);
       return {
         date: date,
         formatted: formatEasternTime(date)
@@ -92,10 +83,16 @@ function parseDirectoryDate(dirName) {
 // Get all valid directory entries from the pages path
 const allItems = fs.readdirSync(pagesPath, { withFileTypes: true });
 
-// Important: We need today's date string to find today's reports
-const today = new Date();
-const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-console.log(`Today's date string: ${todayStr}`);
+// Get today's date in Eastern Time
+const now = new Date();
+const todayStr = now.toLocaleString("en-US", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  timeZone: "America/New_York"
+}).replace(/(\d+)\/(\d+)\/(\d+)/, "$3-$1-$2");
+
+console.log(`Today's date string (Eastern): ${todayStr}`);
 
 // Find all report directories EXCEPT the current one
 const allDirs = allItems
