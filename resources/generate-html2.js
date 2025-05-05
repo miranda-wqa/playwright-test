@@ -3,21 +3,24 @@ const path = require("path");
 
 // Environment variable passed from workflow
 const REPORT_DIR = process.env.REPORT_DIR;
+console.log(`REPORT_DIR from environment: ${REPORT_DIR || "Not set"}`);
 
-if (!REPORT_DIR) {
-  console.error("ERROR: REPORT_DIR environment variable not set!");
-  process.exit(1);
-}
-
-const pagesPath = path.join(__dirname, "..", "public");
+// In the workflow, we're in 'main' directory, and public is one level up
+const pagesPath = path.join(__dirname, "..", "..", "public");
 const templatePath = path.join(__dirname, "..", "resources", "report-design.html");
 const outputPath = path.join(pagesPath, "index.html");
 
-// Ensure public directory exists
-if (!fs.existsSync(pagesPath)) {
-  fs.mkdirSync(pagesPath, { recursive: true });
+console.log(`Pages path: ${pagesPath}`);
+console.log(`Template path: ${templatePath}`);
+console.log(`Output path: ${outputPath}`);
+
+// Ensure template exists
+if (!fs.existsSync(templatePath)) {
+  console.error(`Template not found: ${templatePath}`);
+  process.exit(1);
 }
 
+// Read template
 const template = fs.readFileSync(templatePath, "utf-8");
 
 // Date formatter function
@@ -59,20 +62,36 @@ function formatDirectoryDate(dirName) {
   return dirName;
 }
 
-// Get all existing report directories - EXCLUDING the newest one which might not exist yet
+// Debug: List all files/folders in pagesPath
+console.log("Files and folders in public directory:");
+try {
+  const items = fs.readdirSync(pagesPath);
+  items.forEach(item => {
+    const itemPath = path.join(pagesPath, item);
+    const isDir = fs.statSync(itemPath).isDirectory();
+    console.log(`- ${item} (${isDir ? 'directory' : 'file'})`);
+  });
+} catch (err) {
+  console.error(`Error reading public directory: ${err.message}`);
+}
+
+// Get all report directories (excluding the latest one)
 const allDirs = fs
   .readdirSync(pagesPath, { withFileTypes: true })
   .filter((d) => d.isDirectory() && d.name.match(/^20/) && d.name !== REPORT_DIR)
   .map((d) => d.name)
   .sort((a, b) => b.localeCompare(a)); // Descending
 
-// Build the HTML for report items
+console.log(`Found ${allDirs.length} existing report directories`);
+
+// Build HTML for report items
 let reportItems = "";
 
-// Critical change: Always add the current REPORT_DIR as the latest, regardless of
-// whether it exists on disk yet (it will by the time the page is viewed)
+// ALWAYS add the latest report as the first item with the "latest" class
+// This is the most important change - don't check if it exists, just add it!
 const now = formatDate(new Date());
 reportItems += `<li class="latest"><a href="./${REPORT_DIR}/index.html">Run: ${REPORT_DIR} <span class="date">Generated on ${now}</span></a></li>`;
+console.log(`Added latest report link: ${REPORT_DIR}`);
 
 // Add all other reports
 for (const dir of allDirs) {
@@ -80,8 +99,13 @@ for (const dir of allDirs) {
   reportItems += `<li><a href="./${dir}/index.html">Run: ${dir} <span class="date">Generated on ${formattedDate}</span></a></li>`;
 }
 
-// Replace placeholder
+// Replace placeholder and write output
 const finalHtml = template.replace("<!-- REPORT_ITEMS -->", reportItems);
-fs.writeFileSync(outputPath, finalHtml, "utf-8");
 
-console.log(`Generated index.html with latest report (${REPORT_DIR}) and ${allDirs.length} previous reports.`);
+try {
+  fs.writeFileSync(outputPath, finalHtml, "utf-8");
+  console.log(`Successfully updated index.html with latest report link: ${REPORT_DIR}`);
+} catch (err) {
+  console.error(`Error writing index.html: ${err.message}`);
+  process.exit(1);
+}
