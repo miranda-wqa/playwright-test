@@ -120,9 +120,9 @@ jobs:
         continue-on-error: true
 
       - name: 📑 Generate index page
-        run: node ./resources/generate-html.js
         env:
           REPORT_DIR: ${{ needs.tests.outputs.report_dir }}
+        run: node ./resources/generate-html.js
 
       - name: 🚀 Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
