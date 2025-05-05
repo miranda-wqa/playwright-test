@@ -135,7 +135,7 @@ jobs:
           REPORT_DIR: ${{ needs.tests.outputs.report_dir }}
         run: |
           cd main
-          node ./resources/generate-html2.js
+          node ./resources/generate-index.js
 
       - name: 📦 Upload artifact for GitHub Pages
         uses: actions/upload-pages-artifact@v3
