@@ -10,10 +10,6 @@ const pagesPath = path.join(__dirname, "..", "..", "public");
 const templatePath = path.join(__dirname, "..", "resources", "report-design.html");
 const outputPath = path.join(pagesPath, "index.html");
 
-console.log(`Pages path: ${pagesPath}`);
-console.log(`Template path: ${templatePath}`);
-console.log(`Output path: ${outputPath}`);
-
 // Ensure template exists
 if (!fs.existsSync(templatePath)) {
   console.error(`Template not found: ${templatePath}`);
@@ -23,32 +19,35 @@ if (!fs.existsSync(templatePath)) {
 // Read template
 const template = fs.readFileSync(templatePath, "utf-8");
 
-// Create a consistent date formatter function
-// The dateString is already in EST because we're using the America/New_York timezone
-function formatDate(date) {
+// Format date specifically for Eastern Time
+function formatEasternTime(date) {
   try {
-    return new Intl.DateTimeFormat("en-US", {
+    // Force Eastern Time zone regardless of server timezone
+    return date.toLocaleString("en-US", {
       weekday: "long",
-      year: "numeric",
-      month: "long",
+      year: "numeric", 
+      month: "long", 
       day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
+      hour: "numeric",
+      minute: "numeric",
+      hour12: true,
       timeZone: "America/New_York"
-    }).format(date);
+    });
   } catch (err) {
     console.error(`Error formatting date: ${err.message}`);
-    // Return a fallback
-    return date.toLocaleString("en-US", {timeZone: "America/New_York"});
+    return date.toString();
   }
 }
 
-// Get current date in Eastern Time
-function getCurrentESTDate() {
-  return new Date(new Date().toLocaleString("en-US", {timeZone: "America/New_York"}));
+// Get current time in Eastern Time Zone
+function getCurrentEasternTime() {
+  // Using UTC date and forcing display as Eastern
+  const now = new Date();
+  return formatEasternTime(now);
 }
 
-function formatDirectoryDate(dirName) {
+// Parse date from directory name and return Date object
+function parseDirectoryDate(dirName) {
   // Try to match format: YYYY-MM-DD_HH-MM-SS_runid
   let match = dirName.match(/^(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})(?:_\d+)?$/);
   
@@ -64,68 +63,75 @@ function formatDirectoryDate(dirName) {
   
   if (match) {
     const [_, year, month, day, hour, minute, second = 0] = match;
-    // Use EST timezone when creating the date
-    const dateString = `${year}-${month}-${day}T${hour}:${minute}:${second || '00'}-04:00`;
     try {
-      const date = new Date(dateString);
-      return formatDate(date);
+      // Create a Date object correctly representing the time in the directory name
+      const date = new Date(
+        parseInt(year, 10),
+        parseInt(month, 10) - 1, // JavaScript months are 0-based
+        parseInt(day, 10),
+        parseInt(hour, 10),
+        parseInt(minute, 10),
+        parseInt(second, 10)
+      );
+      return {
+        date: date,
+        formatted: formatEasternTime(date)
+      };
     } catch (err) {
       console.error(`Error parsing date from directory name: ${err.message}`);
-      return dirName;
     }
   }
   
-  // Fallback if directory name doesn't match any expected format
-  return dirName;
+  // Return a fallback for unparseable names
+  return {
+    date: new Date(0), // Epoch date so it sorts to the end
+    formatted: dirName
+  };
 }
 
-// Debug: List all files/folders in pagesPath
-console.log("Files and folders in public directory:");
-try {
-  const items = fs.readdirSync(pagesPath);
-  items.forEach(item => {
-    const itemPath = path.join(pagesPath, item);
-    const isDir = fs.statSync(itemPath).isDirectory();
-    console.log(`- ${item} (${isDir ? 'directory' : 'file'})`);
-  });
-} catch (err) {
-  console.error(`Error reading public directory: ${err.message}`);
-}
+// Get all valid directory entries from the pages path
+const allItems = fs.readdirSync(pagesPath, { withFileTypes: true });
 
-// Get ALL report directories - including today's runs
-// Use a more flexible regex to catch all date-formatted directories
-const allDirs = fs
-  .readdirSync(pagesPath, { withFileTypes: true })
-  .filter((d) => {
-    // Include all directories that match the date pattern
-    const isDir = d.isDirectory();
-    const matchesPattern = d.name.match(/^\d{4}-\d{2}-\d{2}/); // Starts with YYYY-MM-DD
-    const notCurrentRun = d.name !== REPORT_DIR; // Not the current run being added
+// Important: We need today's date string to find today's reports
+const today = new Date();
+const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+console.log(`Today's date string: ${todayStr}`);
+
+// Find all report directories EXCEPT the current one
+const allDirs = allItems
+  .filter(item => {
+    // Must be a directory
+    if (!item.isDirectory()) return false;
     
-    if (isDir && matchesPattern) {
-      console.log(`Found report directory: ${d.name}`);
-    }
+    // Must not be the current report directory
+    if (item.name === REPORT_DIR) return false;
     
-    return isDir && matchesPattern && notCurrentRun;
+    // Must match the date format pattern
+    return /^\d{4}-\d{2}-\d{2}/.test(item.name);
   })
-  .map((d) => d.name)
-  .sort((a, b) => b.localeCompare(a)); // Descending (newest first)
+  .map(item => {
+    const parsed = parseDirectoryDate(item.name);
+    return {
+      name: item.name,
+      parsed: parsed
+    };
+  })
+  .sort((a, b) => b.parsed.date - a.parsed.date); // Sort by date (newest first)
 
 console.log(`Found ${allDirs.length} existing report directories`);
+console.log(`Today's reports: ${allDirs.filter(d => d.name.startsWith(todayStr)).length}`);
 
 // Build HTML for report items
 let reportItems = "";
 
 // ALWAYS add the latest report as the first item with the "latest" class
-const now = formatDate(getCurrentESTDate());
-reportItems += `<li class="latest"><a href="./${REPORT_DIR}/index.html">Run: ${REPORT_DIR} <span class="date">Generated on ${now}</span></a></li>`;
-console.log(`Added latest report link: ${REPORT_DIR}`);
+const currentTime = getCurrentEasternTime();
+reportItems += `<li class="latest"><a href="./${REPORT_DIR}/index.html">Run: ${REPORT_DIR} <span class="date">Generated on ${currentTime}</span></a></li>`;
+console.log(`Added latest report link: ${REPORT_DIR} with time ${currentTime}`);
 
 // Add all other reports
 for (const dir of allDirs) {
-  const formattedDate = formatDirectoryDate(dir);
-  reportItems += `<li><a href="./${dir}/index.html">Run: ${dir} <span class="date">Generated on ${formattedDate}</span></a></li>`;
-  console.log(`Added previous report link: ${dir}`);
+  reportItems += `<li><a href="./${dir.name}/index.html">Run: ${dir.name} <span class="date">Generated on ${dir.parsed.formatted}</span></a></li>`;
 }
 
 // Replace placeholder and write output
