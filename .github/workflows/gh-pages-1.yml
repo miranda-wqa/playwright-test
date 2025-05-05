@@ -1,6 +1,5 @@
 # Using gh-pages for deployment to pages - Simple HTML
 # Using Multiple workflow jobs
-# main workflow
 
 name: 🎭 Playwright Tests - 1
 

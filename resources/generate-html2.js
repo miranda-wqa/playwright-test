@@ -6,7 +6,7 @@ const path = require("path");
 // Environment variable passed from workflow
 const REPORT_DIR = process.env.REPORT_DIR;
 
-const pagesPath = path.join(__dirname, "..", "gh-pages"); // when using gh-pages branch
+const pagesPath = path.join(__dirname, "..", "public"); // when using default GitHub pages on main branch
 const templatePath = path.join(__dirname, "..", "resources", "report-design.html");
 const outputPath = path.join(pagesPath, "index.html");
 
@@ -55,22 +55,37 @@ function formatDirectoryDate(dirName) {
   return dirName;
 }
 
+// Get all directories in the pages path
 const allDirs = fs
   .readdirSync(pagesPath, { withFileTypes: true })
   .filter((d) => d.isDirectory() && d.name.match(/^20/))
   .map((d) => d.name)
   .sort((a, b) => b.localeCompare(a)); // Descending
 
+// Check if REPORT_DIR exists in the pagesPath
+const reportDirExists = fs.existsSync(path.join(pagesPath, REPORT_DIR));
+const reportDirInList = allDirs.includes(REPORT_DIR);
+
+// Create an array with all directories, ensuring REPORT_DIR is first if it exists
+let sortedDirs = [...allDirs];
+if (reportDirExists && !reportDirInList) {
+  sortedDirs.unshift(REPORT_DIR);
+} else if (reportDirInList) {
+  // If REPORT_DIR is in allDirs, make sure it's first
+  sortedDirs = [REPORT_DIR, ...sortedDirs.filter(dir => dir !== REPORT_DIR)];
+}
+
 let reportItems = "";
 
-// Latest run
-const now = formatDate(new Date());
-reportItems += `<li class="latest"><a href="./${REPORT_DIR}/index.html">Run: ${REPORT_DIR} <span class="date">Generated on ${now}</span></a></li>`;
-
-// Older runs
-for (const dir of allDirs) {
-  if (dir !== REPORT_DIR) {
-    const formattedDate = formatDirectoryDate(dir);
+// Generate HTML list items for all directories
+for (let i = 0; i < sortedDirs.length; i++) {
+  const dir = sortedDirs[i];
+  const formattedDate = formatDirectoryDate(dir);
+  
+  // Add the "latest" class only to the first item
+  if (i === 0) {
+    reportItems += `<li class="latest"><a href="./${dir}/index.html">Run: ${dir} <span class="date">Generated on ${formattedDate}</span></a></li>`;
+  } else {
     reportItems += `<li><a href="./${dir}/index.html">Run: ${dir} <span class="date">Generated on ${formattedDate}</span></a></li>`;
   }
 }
@@ -78,3 +93,6 @@ for (const dir of allDirs) {
 // Replace placeholder
 const finalHtml = template.replace("<!-- REPORT_ITEMS -->", reportItems);
 fs.writeFileSync(outputPath, finalHtml, "utf-8");
+
+// Log completion
+console.log(`Generated index.html with ${sortedDirs.length} report links. Latest report: ${sortedDirs[0]}`);

@@ -1,6 +1,5 @@
 # Using default GiHub Actions for deployment to pages - FULL HTML
 # Using Multiple workflow jobs
-# main workflow
 
 name: 🎭 Playwright Tests - 3
 
@@ -136,7 +135,7 @@ jobs:
           REPORT_DIR: ${{ needs.tests.outputs.report_dir }}
         run: |
           cd main
-          node ./resources/generate-html.js
+          node ./resources/generate-html2.js
 
       - name: 📦 Upload artifact for GitHub Pages
         uses: actions/upload-pages-artifact@v3
