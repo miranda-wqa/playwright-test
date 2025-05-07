@@ -27,78 +27,73 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p artifact-index
-          echo "<html><body><h1>Acceptance Test Artifacts</h1>" > artifact-index/index.html
+          cat > artifact-index/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Acceptance Test Reports</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 20px; }
+              h1 { color: #333; }
+              h2 { color: #666; margin-top: 20px; }
+              ul { list-style-type: none; padding: 0; }
+              li { margin: 10px 0; }
+              a { color: #0366d6; text-decoration: none; }
+              a:hover { text-decoration: underline; }
+              .run-info { color: #666; font-size: 0.9em; }
+            </style>
+          </head>
+          <body>
+            <h1>Acceptance Test Reports</h1>
+          EOF
 
-          # Debug: Save raw API response
+          # Fetch all artifacts
           echo "Fetching artifacts..."
           gh api --paginate /repos/${{ github.repository }}/actions/artifacts > raw_artifacts.json
           
-          # Debug: Show raw response structure
-          echo "Raw response structure:"
-          jq 'keys' raw_artifacts.json
-          
-          # Debug: Check if we have any artifacts
-          echo "Checking for artifacts..."
-          jq '.artifacts | length' raw_artifacts.json
-          
-          # Debug: List all artifact names
-          echo "Artifact names found:"
-          jq '.artifacts[].name' raw_artifacts.json
-          
-          # Debug: Show full artifact details
-          echo "Full artifact details:"
-          jq '.artifacts[] | {name, expired, workflow_run: .workflow_run.head_branch}' raw_artifacts.json
-          
-          # Process artifacts with intermediate debug output
+          # Process artifacts and generate HTML
           echo "Processing artifacts..."
           gh api --paginate /repos/${{ github.repository }}/actions/artifacts | \
           jq -s '
             add | 
             .artifacts[] | 
             select(.name == "report-folder" and .expired == false) | 
-            {name, branch: .workflow_run.head_branch, id: .id, archive_download_url}
-          ' > filtered_artifacts.json
-          
-          # Debug: Show filtered artifacts
-          echo "Filtered artifacts:"
-          cat filtered_artifacts.json
-          
-          # Generate HTML from filtered artifacts
-          cat filtered_artifacts.json | \
+            {
+              name,
+              branch: .workflow_run.head_branch,
+              run_id: .workflow_run.id,
+              run_number: .workflow_run.run_number,
+              created_at: .created_at,
+              id: .id,
+              download_url: .archive_download_url
+            }
+          ' | \
           jq -s '
             group_by(.branch) | 
+            sort_by(.[0].branch) | 
             .[] as $branch_group |
               "<h2>Branch: \($branch_group[0].branch)</h2><ul>" +
-              ($branch_group | map("<li><a href=\"" + .archive_download_url + "\">Artifact #\(.id)</a></li>") | join("")) +
+              ($branch_group | sort_by(.run_id) | reverse | map(
+                "<li>" +
+                "<a href=\"" + .download_url + "\">Run #\(.run_number)</a> " +
+                "<span class=\"run-info\">(ID: \(.id), Created: \(.created_at))</span>" +
+                "</li>"
+              ) | join("")) +
               "</ul>"
           ' >> artifact-index/index.html
 
           echo "</body></html>" >> artifact-index/index.html
           
-          # Debug: Show final HTML
-          echo "Generated HTML:"
-          cat artifact-index/index.html
-          
-          # Debug: Check file permissions and contents
-          echo "Checking artifact-index directory:"
-          ls -la artifact-index/
-          echo "File size of index.html:"
-          wc -l artifact-index/index.html
-          echo "First few lines of index.html:"
-          head -n 5 artifact-index/index.html
+          # Debug: Show the generated HTML
+          echo "Generated HTML preview:"
+          head -n 20 artifact-index/index.html
+          echo "..."
+          tail -n 5 artifact-index/index.html
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: artifact-index
-        continue-on-error: true
-
-      - name: Debug Upload
-        run: |
-          echo "Checking if artifact-index still exists after upload:"
-          ls -la artifact-index/
-          echo "Contents of index.html after upload:"
-          cat artifact-index/index.html
 
   deploy:
     runs-on: ubuntu-latest
