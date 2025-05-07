@@ -33,6 +33,22 @@ jobs:
           echo "Fetching artifacts..."
           gh api --paginate /repos/${{ github.repository }}/actions/artifacts > raw_artifacts.json
           
+          # Debug: Show raw API response
+          echo "Raw API response:"
+          cat raw_artifacts.json
+          
+          # Debug: Check if we have any artifacts
+          echo "Checking for artifacts..."
+          jq '.artifacts | length' raw_artifacts.json
+          
+          # Debug: List all artifact names
+          echo "Artifact names found:"
+          jq '.artifacts[].name' raw_artifacts.json
+          
+          # Debug: Show full artifact details
+          echo "Full artifact details:"
+          jq '.artifacts[] | {name, expired, workflow_run: .workflow_run.head_branch}' raw_artifacts.json
+          
           # Download and organize artifacts
           echo "Downloading and organizing artifacts..."
           gh api --paginate /repos/${{ github.repository }}/actions/artifacts | \
@@ -47,19 +63,38 @@ jobs:
               created_at: .created_at,
               download_url: .archive_download_url
             }
-          ' | \
-          jq -r '.[] | "\(.branch) \(.run_number) \(.run_id) \(.created_at) \(.download_url)"' | \
+          ' > filtered_artifacts.json
+          
+          # Debug: Show filtered artifacts
+          echo "Filtered artifacts to download:"
+          cat filtered_artifacts.json
+          
+          # Process each artifact
+          jq -r '.[] | "\(.branch) \(.run_number) \(.run_id) \(.created_at) \(.download_url)"' filtered_artifacts.json | \
           while read branch run_number run_id created_at url; do
+            echo "Processing artifact for branch $branch, run $run_number..."
+            echo "Download URL: $url"
+            
             # Create directory for this run
             run_dir="artifact-index/reports/$branch/$run_number"
             mkdir -p "$run_dir"
             
-            # Download and extract the artifact
-            echo "Downloading report for branch $branch, run $run_number..."
+            # Download the artifact
+            echo "Downloading report..."
             curl -L -H "Authorization: token $GH_TOKEN" "$url" > "$run_dir/report.zip"
             
+            # Debug: Check if download was successful
+            echo "Download size:"
+            ls -l "$run_dir/report.zip"
+            
             # Extract the report
+            echo "Extracting report..."
+            unzip -l "$run_dir/report.zip"
             unzip -o "$run_dir/report.zip" -d "$run_dir"
+            
+            # Debug: Check extracted contents
+            echo "Extracted contents:"
+            ls -la "$run_dir"
             
             # Clean up the zip file
             rm "$run_dir/report.zip"
@@ -72,6 +107,12 @@ jobs:
               \"created_at\": \"$created_at\"
             }" > "$run_dir/metadata.json"
           done
+          
+          # Debug: Show final directory structure
+          echo "Final directory structure:"
+          find artifact-index -type d
+          echo "Contents of reports directory:"
+          ls -la artifact-index/reports
 
       - name: Generate Index Page
         run: |
@@ -120,9 +161,9 @@ jobs:
 
           echo "</body></html>" >> artifact-index/index.html
           
-          # Debug: Show the directory structure
-          echo "Generated directory structure:"
-          find artifact-index -type d
+          # Debug: Show the generated HTML
+          echo "Generated HTML:"
+          cat artifact-index/index.html
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
