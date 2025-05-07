@@ -1,108 +1,55 @@
-name: Generate Artifact Index
+name: Deploy Acceptance Test Reports
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ main ]
-
+  
 permissions:
   contents: read
-  actions: read
   pages: write
   id-token: write
 
 jobs:
-  build-index:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup GitHub CLI
-        uses: cli/cli-action@v2
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
 
-      - name: Generate HTML index of artifacts
+      - name: Generate Index Page
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p artifact-index
-          cat > artifact-index/index.html << 'EOF'
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <title>Acceptance Test Artifacts</title>
-            <style>
-              body { font-family: Arial, sans-serif; margin: 20px; }
-              h1 { color: #333; }
-              h2 { color: #666; margin-top: 20px; }
-              ul { list-style-type: none; padding: 0; }
-              li { margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 4px; }
-              .artifact-link { color: #0366d6; text-decoration: none; }
-              .artifact-link:hover { text-decoration: underline; }
-              .workflow-id { color: #666; font-size: 0.9em; }
-            </style>
-          </head>
-          <body>
-            <h1>Acceptance Test Artifacts</h1>
-          EOF
+          echo "<html><body><h1>Acceptance Test Artifacts</h1>" > artifact-index/index.html
 
-          echo "Fetching artifacts..."
           gh api --paginate /repos/${{ github.repository }}/actions/artifacts | \
-          jq -s -r '
-            # First, get all non-expired artifacts and log count
-            [.[].artifacts[] | select(.name == "acceptance-test-results" and .expired == false)] as $all_artifacts |
-            "Found \($all_artifacts | length) non-expired artifacts" |
-            # Then process the artifacts
-            $all_artifacts |
-            [.[] | {
-                branch: .workflow_run.head_branch,
-                workflow_run_id: .workflow_run.id,
-                artifact_id: .id,
-                download_url: .archive_download_url
-              }] |
-            # Group by branch and log branch counts
-            group_by(.branch) |
-            "Grouped into \(length) branches" |
-            # Transform into final structure
-            map({
-                branch: .[0].branch,
-                workflow_runs: map({
-                  workflow_run_id: .workflow_run_id,
-                  artifact_id: .artifact_id,
-                  download_url: .download_url
-                }) | sort_by(.workflow_run_id) | reverse
-              }) |
-            # Sort branches alphabetically
-            sort_by(.branch) |
-            # Log branch names
-            "Branches found: " + (map(.branch) | join(", ")) |
-            # Generate HTML
-            .[] as $branch |
-              "<h2>Branch: \($branch.branch)</h2><ul>" +
-              ($branch.workflow_runs | map(
-                "<li>" +
-                "<a href=\"" + .download_url + "\" class=\"artifact-link\">Artifact #\(.artifact_id)</a>" +
-                "<span class=\"workflow-id\"> - Workflow Run: \(.workflow_run_id)</span>" +
-                "</li>"
-              ) | join("")) +
+          jq -r '
+            [.[].artifacts[] | select(.name == "report-folder" and .expired == false)
+             | {name, branch: .workflow_run.head_branch, id: .id, archive_download_url}]
+            | group_by(.branch)
+            | .[] as $branch_group |
+              "<h2>Branch: \($branch_group[0].branch)</h2><ul>" +
+              ($branch_group | map("<li><a href=\"" + .archive_download_url + "\">Artifact #\(.id)</a></li>") | join("")) +
               "</ul>"
           ' >> artifact-index/index.html
 
           echo "</body></html>" >> artifact-index/index.html
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v2
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
         with:
           path: artifact-index
 
   deploy:
-    needs: build-index
     runs-on: ubuntu-latest
+    needs: build
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v3
+        uses: actions/deploy-pages@v4
