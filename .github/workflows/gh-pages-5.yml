@@ -19,6 +19,11 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      - name: Authenticate GitHub CLI
+        run: gh auth setup-git && echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
       - name: Install tools
         run: |
           sudo apt-get update
@@ -80,4 +85,3 @@ jobs:
 
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
-        
