@@ -36,26 +36,29 @@ jobs:
         run: |
           mkdir -p root-webapp
 
-          gh api --paginate /repos/${{ github.repository }}/actions/artifacts | \
-          jq -r '[.artifacts[] 
-            | select(.name == "report-folder" and .expired == false)
-            | {id, name, created_at, archive_download_url, run_id}] 
-            | sort_by(.created_at) 
-            | reverse 
-            | .[:50]' > artifacts.json
+          # Get artifacts
+          curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            https://api.github.com/repos/miranda-wqa/playwright-test/actions/artifacts?per_page=100 \
+            | jq -r '[.artifacts[] 
+              | select(.name == "report-folder" and .expired == false)
+              | {id, name, created_at, archive_download_url, run_id}] 
+              | sort_by(.created_at) 
+              | reverse 
+              | .[:50]' > artifacts.json
 
+          # Process each artifact
           cat artifacts.json | jq -c '.[]' | while read artifact; do
             ID=$(echo "$artifact" | jq -r '.id')
             RUN_ID=$(echo "$artifact" | jq -r '.run_id')
             CREATED=$(echo "$artifact" | jq -r '.created_at' | sed 's/[:T]/-/g' | cut -d'.' -f1)
-            
+
             RUN_DATA=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-            https://api.github.com/repos/miranda-wqa/playwright-test/actions/runs/$RUN_ID)
+              https://api.github.com/repos/miranda-wqa/playwright-test/actions/runs/$RUN_ID)
             BRANCH=$(echo "$RUN_DATA" | jq -r '.head_branch')
 
             FOLDER="root-webapp/${BRANCH}/${CREATED}_run-${RUN_ID}"
             mkdir -p "$FOLDER"
-            
+
             DOWNLOAD_URL=$(echo "$artifact" | jq -r '.archive_download_url')
             curl -L -H "Authorization: token $GITHUB_TOKEN" "$DOWNLOAD_URL" -o tmp.zip
 
