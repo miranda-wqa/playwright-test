@@ -55,8 +55,8 @@ jobs:
             FOLDER="root-webapp/${BRANCH}/${CREATED}_run-${RUN_ID}"
             mkdir -p "$FOLDER"
             
-            gh api -H "Accept: application/vnd.github.v3+json" \
-              /repos/${{ github.repository }}/actions/artifacts/$ID/zip -q > tmp.zip
+            DOWNLOAD_URL=$(echo "$artifact" | jq -r '.archive_download_url')
+            curl -L -H "Authorization: token $GITHUB_TOKEN" "$DOWNLOAD_URL" -o tmp.zip
 
             unzip -q tmp.zip -d "$FOLDER"
             rm tmp.zip
