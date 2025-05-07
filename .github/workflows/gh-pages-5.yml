@@ -78,11 +78,27 @@ jobs:
           # Debug: Show final HTML
           echo "Generated HTML:"
           cat artifact-index/index.html
+          
+          # Debug: Check file permissions and contents
+          echo "Checking artifact-index directory:"
+          ls -la artifact-index/
+          echo "File size of index.html:"
+          wc -l artifact-index/index.html
+          echo "First few lines of index.html:"
+          head -n 5 artifact-index/index.html
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: artifact-index
+        continue-on-error: true
+
+      - name: Debug Upload
+        run: |
+          echo "Checking if artifact-index still exists after upload:"
+          ls -la artifact-index/
+          echo "Contents of index.html after upload:"
+          cat artifact-index/index.html
 
   deploy:
     runs-on: ubuntu-latest
