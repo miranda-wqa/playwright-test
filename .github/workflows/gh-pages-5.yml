@@ -1,32 +1,12 @@
-name: Deploy Playwright Report
+name: Deploy Playwright Reports to Pages
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
-
+  push:
+      branches:
+        - main
 jobs:
-  test-and-upload:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run Playwright tests
-        run: npx playwright test
-
-      - name: Upload Playwright HTML report
-        uses: actions/upload-artifact@v3
-        with:
-          name: report-folder
-          path: playwright-report/  # change if your report is in a different folder
-
-  deploy-to-pages:
-    needs: test-and-upload
+  deploy-reports:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -34,24 +14,50 @@ jobs:
       id-token: write
 
     steps:
-      - name: Download Playwright report
-        uses: actions/download-artifact@v4
-        with:
-          name: report-folder
-          path: root-webapp/latest-report
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install GitHub CLI, jq, and unzip
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh jq unzip
+
+      - name: Fetch and unpack artifacts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p root-webapp
+
+          gh api --paginate /repos/${{ github.repository }}/actions/artifacts | \
+            jq -c '.artifacts[] | select(.name == "report-folder" and .expired == false)' | \
+            while read artifact; do
+              ID=$(echo "$artifact" | jq -r '.id')
+              CREATED=$(echo "$artifact" | jq -r '.created_at' | sed 's/[:T]/-/g' | cut -d'.' -f1)
+              RUN_ID=$(echo "$artifact" | jq -r '.workflow_run.id')
+
+              CREATED=${CREATED:-"unknown-time"}
+              RUN_ID=${RUN_ID:-"unknown-run"}
+
+              FOLDER="root-webapp/${CREATED}_run-${RUN_ID}"
+              mkdir -p "$FOLDER"
+
+              DOWNLOAD_URL=$(echo "$artifact" | jq -r '.archive_download_url')
+              curl -sSL -H "Authorization: token $GITHUB_TOKEN" "$DOWNLOAD_URL" -o tmp.zip
+              unzip -q tmp.zip -d "$FOLDER"
+              rm tmp.zip
+          done
 
       - name: Generate index.html
         run: |
-          echo "<html><head><title>Acceptance Test Reports</title></head><body>" > root-webapp/index.html
-          echo "<h1>Acceptance Test Reports</h1>" >> root-webapp/index.html
-          echo "<a href='latest-report/index.html'>Latest Test Report</a><br>" >> root-webapp/index.html
+          echo "<html><head><title>Playwright Reports</title></head><body><h1>Playwright Reports</h1>" > root-webapp/index.html
+          for dir in root-webapp/*_run-*; do
+            NAME=$(basename "$dir")
+            echo "<a href=\"$NAME/index.html\">$NAME</a><br>" >> root-webapp/index.html
+          done
           echo "</body></html>" >> root-webapp/index.html
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v2
-        with:
-          path: root-webapp
-
       - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v2
-        
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./root-webapp
