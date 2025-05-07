@@ -1,4 +1,4 @@
-name: Deploy Reports Index to Pages
+name: Deploy Reports - 1
 
 on:
   workflow_dispatch:
