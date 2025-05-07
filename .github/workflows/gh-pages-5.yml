@@ -33,6 +33,10 @@ jobs:
           echo "Fetching artifacts..."
           gh api --paginate /repos/${{ github.repository }}/actions/artifacts > raw_artifacts.json
           
+          # Debug: Show raw response structure
+          echo "Raw response structure:"
+          jq 'keys' raw_artifacts.json
+          
           # Debug: Check if we have any artifacts
           echo "Checking for artifacts..."
           jq '.artifacts | length' raw_artifacts.json
@@ -41,7 +45,11 @@ jobs:
           echo "Artifact names found:"
           jq '.artifacts[].name' raw_artifacts.json
           
-          # Process artifacts
+          # Debug: Show full artifact details
+          echo "Full artifact details:"
+          jq '.artifacts[] | {name, expired, workflow_run: .workflow_run.head_branch}' raw_artifacts.json
+          
+          # Process artifacts with intermediate debug output
           echo "Processing artifacts..."
           gh api --paginate /repos/${{ github.repository }}/actions/artifacts | \
           jq -s '
@@ -49,7 +57,14 @@ jobs:
             .artifacts[] | 
             select(.name == "report-folder" and .expired == false) | 
             {name, branch: .workflow_run.head_branch, id: .id, archive_download_url}
-          ' | \
+          ' > filtered_artifacts.json
+          
+          # Debug: Show filtered artifacts
+          echo "Filtered artifacts:"
+          cat filtered_artifacts.json
+          
+          # Generate HTML from filtered artifacts
+          cat filtered_artifacts.json | \
           jq -s '
             group_by(.branch) | 
             .[] as $branch_group |
@@ -59,6 +74,10 @@ jobs:
           ' >> artifact-index/index.html
 
           echo "</body></html>" >> artifact-index/index.html
+          
+          # Debug: Show final HTML
+          echo "Generated HTML:"
+          cat artifact-index/index.html
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
