@@ -1,0 +1,103 @@
+name: Deploy Reports Index to Pages
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  actions: read
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Download and organize artifacts by branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_ARTIFACT_NAME: "acceptance-test-results"
+        run: |
+          mkdir -p _site
+          REPO="${GITHUB_REPOSITORY}"
+
+          echo "Fetching all artifacts..."
+          gh api --paginate "/repos/${REPO}/actions/artifacts" \
+            | jq -r --arg NAME "$TARGET_ARTIFACT_NAME" '
+              .artifacts
+              | map(select(.name == $NAME and .expired == false))
+              | sort_by(.created_at)
+              | reverse
+              | group_by(.workflow_run.head_branch)
+              | map({ 
+                  branch: .[0].workflow_run.head_branch, 
+                  latest: .[0] 
+                })
+            ' > artifacts_by_branch.json
+
+          cat artifacts_by_branch.json | jq -c '.'[] | while read -r item; do
+            BRANCH=$(echo "$item" | jq -r '.branch')
+            ARTIFACT_ID=$(echo "$item" | jq -r '.latest.id')
+            ARTIFACT_URL=$(echo "$item" | jq -r '.latest.archive_download_url')
+
+            echo "Downloading artifact $ARTIFACT_ID from branch $BRANCH..."
+            mkdir -p "_site/${BRANCH}"
+            gh api "$ARTIFACT_URL" --method GET > artifact.zip || continue
+
+            echo "Extracting..."
+            unzip -o artifact.zip -d "_site/${BRANCH}" && rm artifact.zip
+          done
+
+          # Create index.html
+          cat > _site/index.html <<EOF
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <title>Acceptance Test Reports</title>
+            <style>
+              body { font-family: sans-serif; padding: 20px; }
+              h2 { margin-top: 40px; }
+              ul { line-height: 1.6; }
+            </style>
+          </head>
+          <body>
+          <h1>Acceptance Test Reports</h1>
+          EOF
+
+          for dir in _site/*/; do
+            BRANCH=$(basename "$dir")
+            echo "<h2>Branch: $BRANCH</h2><ul>" >> _site/index.html
+            for report in "$dir"/*; do
+              NAME=$(basename "$report")
+              echo "<li><a href=\"${BRANCH}/${NAME}\">${NAME}</a></li>" >> _site/index.html
+            done
+            echo "</ul>" >> _site/index.html
+          done
+
+          echo "</body></html>" >> _site/index.html
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
