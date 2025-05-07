@@ -6,19 +6,20 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
-  deploy-reports:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
 
     steps:
-      - name: Checkout repo
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install GitHub CLI
+      - name: Set up GitHub CLI
         run: sudo apt-get install gh -y
 
       - name: Install jq and unzip
@@ -34,7 +35,7 @@ jobs:
             while read artifact; do
               ID=$(echo "$artifact" | jq -r '.id')
               CREATED=$(echo "$artifact" | jq -r '.created_at' | sed 's/[:T]/-/g' | cut -d'.' -f1)
-              RUN_ID=$(echo "$artifact" | jq -r '.run_id')
+              RUN_ID=$(echo "$artifact" | jq -r '.workflow_run.id')
 
               CREATED=${CREATED:-"unknown-time"}
               RUN_ID=${RUN_ID:-"unknown-run"}
@@ -61,8 +62,20 @@ jobs:
           done
           echo "</body></html>" >> root-webapp/index.html
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v2
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./root-webapp
+          path: root-webapp
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
+        
