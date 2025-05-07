@@ -22,11 +22,60 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Generate Index Page
+      - name: Download and Organize Reports
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mkdir -p artifact-index
+          # Create base directory
+          mkdir -p artifact-index/reports
+          
+          # Fetch all artifacts
+          echo "Fetching artifacts..."
+          gh api --paginate /repos/${{ github.repository }}/actions/artifacts > raw_artifacts.json
+          
+          # Download and organize artifacts
+          echo "Downloading and organizing artifacts..."
+          gh api --paginate /repos/${{ github.repository }}/actions/artifacts | \
+          jq -s '
+            add | 
+            .artifacts[] | 
+            select(.name == "report-folder" and .expired == false) | 
+            {
+              branch: .workflow_run.head_branch,
+              run_number: .workflow_run.run_number,
+              run_id: .workflow_run.id,
+              created_at: .created_at,
+              download_url: .archive_download_url
+            }
+          ' | \
+          jq -r '.[] | "\(.branch) \(.run_number) \(.run_id) \(.created_at) \(.download_url)"' | \
+          while read branch run_number run_id created_at url; do
+            # Create directory for this run
+            run_dir="artifact-index/reports/$branch/$run_number"
+            mkdir -p "$run_dir"
+            
+            # Download and extract the artifact
+            echo "Downloading report for branch $branch, run $run_number..."
+            curl -L -H "Authorization: token $GH_TOKEN" "$url" > "$run_dir/report.zip"
+            
+            # Extract the report
+            unzip -o "$run_dir/report.zip" -d "$run_dir"
+            
+            # Clean up the zip file
+            rm "$run_dir/report.zip"
+            
+            # Create a metadata file
+            echo "{
+              \"branch\": \"$branch\",
+              \"run_number\": \"$run_number\",
+              \"run_id\": \"$run_id\",
+              \"created_at\": \"$created_at\"
+            }" > "$run_dir/metadata.json"
+          done
+
+      - name: Generate Index Page
+        run: |
+          # Create index page with styling
           cat > artifact-index/index.html << 'EOF'
           <!DOCTYPE html>
           <html>
@@ -47,48 +96,33 @@ jobs:
             <h1>Acceptance Test Reports</h1>
           EOF
 
-          # Fetch all artifacts
-          echo "Fetching artifacts..."
-          gh api --paginate /repos/${{ github.repository }}/actions/artifacts > raw_artifacts.json
-          
-          # Process artifacts and generate HTML
-          echo "Processing artifacts..."
-          gh api --paginate /repos/${{ github.repository }}/actions/artifacts | \
-          jq -s '
-            add | 
-            .artifacts[] | 
-            select(.name == "report-folder" and .expired == false) | 
-            {
-              name,
-              branch: .workflow_run.head_branch,
-              run_id: .workflow_run.id,
-              run_number: .workflow_run.run_number,
-              created_at: .created_at,
-              id: .id,
-              download_url: .archive_download_url
-            }
-          ' | \
-          jq -s '
-            group_by(.branch) | 
-            sort_by(.[0].branch) | 
-            .[] as $branch_group |
-              "<h2>Branch: \($branch_group[0].branch)</h2><ul>" +
-              ($branch_group | sort_by(.run_id) | reverse | map(
-                "<li>" +
-                "<a href=\"" + .download_url + "\">Run #\(.run_number)</a> " +
-                "<span class=\"run-info\">(ID: \(.id), Created: \(.created_at))</span>" +
-                "</li>"
-              ) | join("")) +
-              "</ul>"
-          ' >> artifact-index/index.html
+          # Generate index content based on directory structure
+          for branch_dir in artifact-index/reports/*/; do
+            branch=$(basename "$branch_dir")
+            echo "<h2>Branch: $branch</h2><ul>" >> artifact-index/index.html
+            
+            # Sort runs by run number in descending order
+            for run_dir in $(ls -v -r "$branch_dir"); do
+              if [ -f "$branch_dir/$run_dir/metadata.json" ]; then
+                run_number=$(jq -r '.run_number' "$branch_dir/$run_dir/metadata.json")
+                run_id=$(jq -r '.run_id' "$branch_dir/$run_dir/metadata.json")
+                created_at=$(jq -r '.created_at' "$branch_dir/$run_dir/metadata.json")
+                
+                echo "<li>" >> artifact-index/index.html
+                echo "<a href=\"reports/$branch/$run_dir/index.html\">Run #$run_number</a> " >> artifact-index/index.html
+                echo "<span class=\"run-info\">(ID: $run_id, Created: $created_at)</span>" >> artifact-index/index.html
+                echo "</li>" >> artifact-index/index.html
+              fi
+            done
+            
+            echo "</ul>" >> artifact-index/index.html
+          done
 
           echo "</body></html>" >> artifact-index/index.html
           
-          # Debug: Show the generated HTML
-          echo "Generated HTML preview:"
-          head -n 20 artifact-index/index.html
-          echo "..."
-          tail -n 5 artifact-index/index.html
+          # Debug: Show the directory structure
+          echo "Generated directory structure:"
+          find artifact-index -type d
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
