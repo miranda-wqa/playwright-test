@@ -7,10 +7,9 @@ permissions:
   contents: read
   pages: write
   id-token: write
-  actions: read
 
 concurrency:
-  group: "pages"
+  group: "deploy-reports"
   cancel-in-progress: false
 
 jobs:
@@ -23,7 +22,7 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
-      - name: Download and organize artifacts by branch
+      - name: Download artifacts and generate index
         env:
           GH_TOKEN: ${{ github.token }}
           TARGET_ARTIFACT_NAME: "acceptance-test-results"
@@ -31,55 +30,40 @@ jobs:
           mkdir -p _site
           REPO="${GITHUB_REPOSITORY}"
 
-          echo "Fetching all artifacts..."
-          gh api --paginate "/repos/${REPO}/actions/artifacts" \
-            | jq -r --arg NAME "$TARGET_ARTIFACT_NAME" '
-              .artifacts
-              | map(select(.name == $NAME and .expired == false))
-              | sort_by(.created_at)
-              | reverse
-              | group_by(.workflow_run.head_branch)
-              | map({ 
-                  branch: .[0].workflow_run.head_branch, 
-                  latest: .[0] 
-                })
-            ' > artifacts_by_branch.json
+          echo "Fetching recent successful runs..."
+          gh api "/repos/${REPO}/actions/runs" --paginate -q \
+            '.workflow_runs[] | select(.conclusion=="success") | {id, head_branch}' \
+            | jq -s 'sort_by(.id) | reverse | .[:10]' \
+            | jq -c '.'[] \
+            | while read -r RUN; do
+              RUN_ID=$(echo "$RUN" | jq -r '.id')
+              BRANCH=$(echo "$RUN" | jq -r '.head_branch')
+              echo "Checking run $RUN_ID for branch $BRANCH..."
 
-          cat artifacts_by_branch.json | jq -c '.'[] | while read -r item; do
-            BRANCH=$(echo "$item" | jq -r '.branch')
-            ARTIFACT_ID=$(echo "$item" | jq -r '.latest.id')
-            ARTIFACT_URL=$(echo "$item" | jq -r '.latest.archive_download_url')
+              gh api "/repos/${REPO}/actions/runs/${RUN_ID}/artifacts" > artifacts.json
+              ARTIFACT=$(jq -c ".artifacts[] | select(.name == \"${TARGET_ARTIFACT_NAME}\")" artifacts.json)
 
-            echo "Downloading artifact $ARTIFACT_ID from branch $BRANCH..."
-            mkdir -p "_site/${BRANCH}"
-            gh api "$ARTIFACT_URL" --method GET > artifact.zip || continue
+              if [ ! -z "$ARTIFACT" ]; then
+                ARTIFACT_URL=$(echo "$ARTIFACT" | jq -r '.archive_download_url')
+                mkdir -p "_site/${BRANCH}"
+                echo "Downloading and extracting artifact..."
+                gh api "$ARTIFACT_URL" --method GET > artifact.zip
+                unzip -o artifact.zip -d "_site/${BRANCH}" && rm artifact.zip
+              fi
+            done
 
-            echo "Extracting..."
-            unzip -o artifact.zip -d "_site/${BRANCH}" && rm artifact.zip
-          done
-
-          # Create index.html
+          # Generate index.html
           cat > _site/index.html <<EOF
           <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="UTF-8">
-            <title>Acceptance Test Reports</title>
-            <style>
-              body { font-family: sans-serif; padding: 20px; }
-              h2 { margin-top: 40px; }
-              ul { line-height: 1.6; }
-            </style>
-          </head>
-          <body>
+          <html><head><meta charset="UTF-8"><title>Acceptance Test Reports</title></head><body>
           <h1>Acceptance Test Reports</h1>
           EOF
 
-          for dir in _site/*/; do
+          find _site -mindepth 1 -maxdepth 1 -type d | while read dir; do
             BRANCH=$(basename "$dir")
             echo "<h2>Branch: $BRANCH</h2><ul>" >> _site/index.html
-            for report in "$dir"/*; do
-              NAME=$(basename "$report")
+            for file in "$dir"/*; do
+              NAME=$(basename "$file")
               echo "<li><a href=\"${BRANCH}/${NAME}\">${NAME}</a></li>" >> _site/index.html
             done
             echo "</ul>" >> _site/index.html
@@ -87,7 +71,7 @@ jobs:
 
           echo "</body></html>" >> _site/index.html
 
-      - name: Upload artifact
+      - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
 
   deploy:
@@ -98,6 +82,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Deploy to GitHub Pages
+      - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
