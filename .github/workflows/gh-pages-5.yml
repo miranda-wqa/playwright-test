@@ -1,150 +1,58 @@
-name: Test-2
+name: Generate Artifact Index
 
 on:
   workflow_dispatch:
   push:
     branches: [ main ]
-
 permissions:
-  actions: read
   contents: read
+  actions: read
+  pages: write
+  id-token: write
 
 jobs:
-  build-and-deploy:
+  build-index:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup GitHub CLI
+        uses: cli/cli-action@v2
+
+      - name: Generate HTML index of artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p artifact-index
+          echo "<html><body><h1>Acceptance Test Artifacts</h1>" > artifact-index/index.html
+
+          gh api --paginate /repos/${{ github.repository }}/actions/artifacts | \
+          jq -s -r '
+            [.[].artifacts[] | select(.name == "acceptance-test-results" and .expired == false)
+             | {name, branch: .workflow_run.head_branch, id: .id, archive_download_url}]
+            | group_by(.branch)
+            | .[] as $branch_group |
+              "<h2>Branch: \($branch_group[0].branch)</h2><ul>" +
+              ($branch_group | map("<li><a href=\"" + .archive_download_url + "\">Artifact #\(.id)</a></li>") | join("")) +
+              "</ul>"
+          ' >> artifact-index/index.html
+
+          echo "</body></html>" >> artifact-index/index.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: artifact-index
+
+  deploy:
+    needs: build-index
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: \${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
-      - name: Setup Pages
-        uses: actions/configure-pages@v3
-
-      - name: Create site directory
-        run: mkdir -p _site
-
-      - name: Build site from artifacts
-        env:
-          GITHUB_TOKEN: \${{ github.token }}
-        run: |
-          # Create main index.html
-          cat > _site/index.html << 'EOF'
-          <!DOCTYPE html><html><head><title>Test Reports</title><style>
-          body{font-family:system-ui;max-width:1000px;margin:0 auto;padding:20px}
-          .branch{border:1px solid #ddd;padding:15px;margin:10px 0;border-radius:5px}
-          </style></head><body>
-          <h1>Test Report History</h1>
-          <div id="branches"></div>
-          <script>
-          fetch('branches.json').then(r=>r.json()).then(branches => {
-            const container = document.getElementById('branches');
-            branches.forEach(b => {
-              const el = document.createElement('div');
-              el.className = 'branch';
-              const latest = b.runs[0] || {};
-              const date = latest.created_at ? new Date(latest.created_at).toLocaleString() : 'N/A';
-              el.innerHTML = `
-                <h2>\${b.branch}</h2>
-                <p>\${b.runs.length} runs | Latest: \${date}</p>
-                <p><a href="\${b.branch}/index.html">View all reports</a>
-                \${latest.workflow_id ? `| <a href="\${b.branch}/\${latest.workflow_id}/index.html">Latest report</a>` : ''}
-                </p>
-              `;
-              container.appendChild(el);
-            });
-          });
-          </script></body></html>
-          EOF
-          
-          # Fetch all artifacts using the GitHub API
-          echo "Fetching artifacts..."
-          artifacts_json=\$(curl -s -H "Authorization: token \$GITHUB_TOKEN" \
-            "https://api.github.com/repos/\$GITHUB_REPOSITORY/actions/artifacts?per_page=100")
-          
-          artifacts=\$(echo "\$artifacts_json" | jq '[.artifacts[] | select((.name=="acceptance-test-results") and .expired==false)]')
-          
-          # Handle pagination for artifacts
-          next_url=\$(curl -s -I -H "Authorization: token \$GITHUB_TOKEN" \
-            "https://api.github.com/repos/\$GITHUB_REPOSITORY/actions/artifacts?per_page=100" | \
-            grep -i "link:" | grep -o '<[^>]*>; rel="next"' || echo '')
-            
-          while [[ -n "\$next_url" ]]; do
-            next_url=\$(echo \$next_url | sed -e 's/.*<$.*$>.*/\1/')
-            echo "Fetching more artifacts: \$next_url"
-            
-            page_json=\$(curl -s -H "Authorization: token \$GITHUB_TOKEN" "\$next_url")
-            page_artifacts=\$(echo "\$page_json" | jq '[.artifacts[] | select((.name=="acceptance-test-results") and .expired==false)]')
-            
-            if [[ \$(echo "\$page_artifacts" | jq '. | length') -gt 0 ]]; then
-              artifacts=\$(echo "\$artifacts \$page_artifacts" | jq -s 'add')
-            fi
-            
-            next_url=\$(curl -s -I -H "Authorization: token \$GITHUB_TOKEN" "\$next_url" | \
-              grep -i "link:" | grep -o '<[^>]*>; rel="next"' || echo '')
-          done
-          
-          # Generate branch data structure
-          echo "\$artifacts" | jq 'group_by(.workflow_run.head_branch) | map({
-            branch: .[0].workflow_run.head_branch, 
-            runs: . | sort_by(.created_at) | reverse | map({
-              id: .id, 
-              workflow_id: .workflow_run.id, 
-              created_at: .created_at
-            })
-          })' > _site/branches.json
-          
-          # Process each branch
-          echo "\$artifacts" | jq -r 'group_by(.workflow_run.head_branch) | .[].[] | [.workflow_run.head_branch, .id, .workflow_run.id, .archive_download_url] | @tsv' | \
-          while IFS=\$'\t' read -r branch artifact_id workflow_id download_url; do
-            echo "Processing branch: \$branch, workflow: \$workflow_id, artifact: \$artifact_id"
-            
-            # Create directories
-            mkdir -p "_site/\$branch/\$workflow_id"
-            
-            # Create branch index if it doesn't exist yet
-            if [ ! -f "_site/\$branch/index.html" ]; then
-              cat > "_site/\$branch/index.html" << EOF
-          <!DOCTYPE html><html><head><title>Tests for \$branch</title><style>
-          body{font-family:system-ui;max-width:1000px;margin:0 auto;padding:20px}
-          .run{border:1px solid #ddd;padding:15px;margin:10px 0;border-radius:5px}
-          </style></head><body>
-          <h1>Test Reports for \$branch</h1>
-          <p><a href="../">Back to all branches</a></p>
-          <div id="runs"></div>
-          <script>
-          fetch('../branches.json').then(r=>r.json()).then(branches => {
-            const branchData = branches.find(b => b.branch === "\$branch");
-            const container = document.getElementById('runs');
-            if (branchData && branchData.runs.length) {
-              branchData.runs.forEach((run, i) => {
-                const el = document.createElement('div');
-                el.className = 'run';
-                const date = new Date(run.created_at).toLocaleString();
-                el.innerHTML = \`
-                  <h3>Run \\${run.workflow_id}\\${i === 0 ? ' (Latest)' : ''}</h3>
-                  <p>Created: \\${date}</p>
-                  <p><a href="\\${run.workflow_id}/index.html">View Report</a></p>
-                \`;
-                container.appendChild(el);
-              });
-            } else {
-              container.innerHTML = '<p>No runs found</p>';
-            }
-          });
-          </script></body></html>
-          EOF
-            fi
-            
-            # Download and extract artifact
-            echo "Downloading artifact from \$download_url"
-            curl -s -L -H "Authorization: token \$GITHUB_TOKEN" "\$download_url" -o artifact.zip
-            unzip -o -q artifact.zip -d "_site/\$branch/\$workflow_id/"
-            rm artifact.zip
-          done
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v2
-
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v2
-        
+        uses: actions/deploy-pages@v3
