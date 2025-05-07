@@ -28,24 +28,10 @@ jobs:
           mkdir -p artifact-index
           echo "<html><body><h1>Acceptance Test Artifacts</h1>" > artifact-index/index.html
 
-          # First, let's see what we're getting from the API
-          echo "Fetching artifacts..."
-          gh api --paginate /repos/${{ github.repository }}/actions/artifacts > artifacts.json
-          
-          # Process the artifacts
-          jq -r '
-            # First combine all pages into a single array of artifacts
-            [.[].artifacts[] | select(.name == "report-folder" and .expired == false)] |
-            # Group by branch
-            group_by(.workflow_run.head_branch) |
-            # Generate HTML for each branch
-            .[] as $branch_group |
-              "<h2>Branch: \($branch_group[0].workflow_run.head_branch)</h2><ul>" +
-              ($branch_group | map(
-                "<li><a href=\"" + .archive_download_url + "\">Artifact #\(.id)</a></li>"
-              ) | join("")) +
-              "</ul>"
-          ' artifacts.json >> artifact-index/index.html
+          # Get all artifacts and combine them into a single array
+          gh api --paginate /repos/${{ github.repository }}/actions/artifacts | \
+          jq -s 'add | .artifacts[] | select(.name == "report-folder" and .expired == false) | {name, branch: .workflow_run.head_branch, id: .id, archive_download_url}' | \
+          jq -s 'group_by(.branch) | .[] as $branch_group | "<h2>Branch: \($branch_group[0].branch)</h2><ul>" + ($branch_group | map("<li><a href=\"" + .archive_download_url + "\">Artifact #\(.id)</a></li>") | join("")) + "</ul>"' >> artifact-index/index.html
 
           echo "</body></html>" >> artifact-index/index.html
 
