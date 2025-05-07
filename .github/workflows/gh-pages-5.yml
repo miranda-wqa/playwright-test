@@ -44,6 +44,10 @@ jobs:
           echo "Artifact names found:"
           jq '.artifacts[].name' raw_artifacts.json
           
+          # Debug: Check for report-folder artifacts specifically
+          echo "Checking for report-folder artifacts..."
+          jq '.artifacts[] | select(.name == "report-folder")' raw_artifacts.json
+          
           # Process artifacts with debug output
           echo "Processing artifacts..."
           gh api --paginate /repos/${{ github.repository }}/actions/artifacts | \
