@@ -1,40 +1,67 @@
-name: Simple GitHub Pages Deployment
+name: Deploy Playwright Reports
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
+  schedule:
+    - cron: '0 * * * *'  # every hour (optional)
 
 jobs:
-  build-and-deploy:
+  deploy-reports:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
     steps:
-      - name: Checkout
+      - name: Checkout repo
         uses: actions/checkout@v4
-      
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-      
-      - name: Create basic page
+
+      - name: Install GitHub CLI
+        run: sudo apt-get install gh -y
+
+      - name: Install jq and unzip
+        run: sudo apt-get install -y jq unzip
+
+      - name: Fetch and unpack artifacts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mkdir -p _site
-          echo '<!DOCTYPE html><html><head><title>Basic Page</title></head><body><h1>Basic Test Page</h1><p>This is a test</p></body></html>' > _site/index.html
-      
-      # Use explicit version 1.2.6 which is known to be more compatible
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-      
-      # Use older version of deploy-pages
+          mkdir -p root-webapp
+          gh api --paginate /repos/${{ github.repository }}/actions/artifacts | \
+            jq -c '.artifacts[] | select(.name == "report-folder" and .expired == false)' | \
+            while read artifact; do
+              ID=$(echo "$artifact" | jq -r '.id')
+              CREATED=$(echo "$artifact" | jq -r '.created_at' | sed 's/[:T]/-/g' | cut -d'.' -f1)
+              RUN_ID=$(echo "$artifact" | jq -r '.run_id')
+
+              CREATED=${CREATED:-"unknown-time"}
+              RUN_ID=${RUN_ID:-"unknown-run"}
+
+              FOLDER="root-webapp/${CREATED}_run-${RUN_ID}"
+              mkdir -p "$FOLDER"
+
+              DOWNLOAD_URL=$(echo "$artifact" | jq -r '.archive_download_url')
+
+              curl -sSL -H "Authorization: token $GITHUB_TOKEN" "$DOWNLOAD_URL" -o tmp.zip
+              unzip -q tmp.zip -d "$FOLDER"
+              rm tmp.zip
+          done
+
+      - name: Generate index.html
+        run: |
+          echo "<html><head><title>Acceptance Test Reports</title></head><body>" > root-webapp/index.html
+          echo "<h1>Acceptance Test Reports</h1>" >> root-webapp/index.html
+          for dir in root-webapp/*_run-*; do
+            if [ -d "$dir" ]; then
+              NAME=$(basename "$dir")
+              echo "<a href=\"$NAME/index.html\">$NAME</a><br>" >> root-webapp/index.html
+            fi
+          done
+          echo "</body></html>" >> root-webapp/index.html
+
       - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v1.2.6
-        
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./root-webapp
