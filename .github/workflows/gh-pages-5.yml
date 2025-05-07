@@ -28,7 +28,24 @@ jobs:
           mkdir -p artifact-index
           echo "<html><body><h1>Acceptance Test Artifacts</h1>" > artifact-index/index.html
 
-          # Get all artifacts and combine them into a single array
+          # Debug: Save raw API response
+          echo "Fetching artifacts..."
+          gh api --paginate /repos/${{ github.repository }}/actions/artifacts > raw_artifacts.json
+          
+          # Debug: Show what we got
+          echo "Raw API response:"
+          cat raw_artifacts.json
+          
+          # Debug: Check if we have any artifacts
+          echo "Checking for artifacts..."
+          jq '.artifacts | length' raw_artifacts.json
+          
+          # Debug: List all artifact names
+          echo "Artifact names found:"
+          jq '.artifacts[].name' raw_artifacts.json
+          
+          # Process artifacts with debug output
+          echo "Processing artifacts..."
           gh api --paginate /repos/${{ github.repository }}/actions/artifacts | \
           jq -s 'add | .artifacts[] | select(.name == "report-folder" and .expired == false) | {name, branch: .workflow_run.head_branch, id: .id, archive_download_url}' | \
           jq -s 'group_by(.branch) | .[] as $branch_group | "<h2>Branch: \($branch_group[0].branch)</h2><ul>" + ($branch_group | map("<li><a href=\"" + .archive_download_url + "\">Artifact #\(.id)</a></li>") | join("")) + "</ul>"' >> artifact-index/index.html
