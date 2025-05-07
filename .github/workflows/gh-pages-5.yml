@@ -21,10 +21,9 @@ jobs:
 
       - name: Install GitHub CLI
         run: |
-          sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-key C99B11DEB97541F0
-          sudo apt-add-repository https://cli.github.com/packages
-          sudo apt-get update
-          sudo apt-get install gh -y
+          curl -fsSL -o gh.deb https://github.com/cli/cli/releases/download/v2.49.0/gh_2.49.0_linux_amd64.deb
+          sudo dpkg -i gh.deb
+          rm gh.deb
 
       - name: Verify GitHub CLI access
         run: gh repo view
