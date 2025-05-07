@@ -18,30 +18,21 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-    
-      - name: Use GitHub CLI
+
+      - name: Install GitHub CLI
+        uses: cli/cli@v2
+
+      - name: Verify GitHub CLI access
         run: gh repo view
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Fetch non-expired artifacts
-        run: |
-          gh api --paginate /repos/${{ github.repository }}/actions/artifacts | \
-          jq -s '[.[].artifacts[] 
-            | select((.name=="report-folder") and (.expired==false))] 
-            | group_by(.workflow_run.head_branch) 
-            | sort_by(.[].id) 
-            | reverse'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
       - name: Fetch and extract artifacts
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p root-webapp
-          
-          # Get latest 50 artifacts named 'report-folder' from 'gh-pages-5.yml'
+
           gh api --paginate /repos/${{ github.repository }}/actions/artifacts | \
           jq -r '[.artifacts[] 
             | select(.name == "report-folder" and .expired == false)
@@ -50,13 +41,11 @@ jobs:
             | reverse 
             | .[:50]' > artifacts.json
 
-          # For each artifact: download, extract to folder: root-webapp/<branch>/<timestamp-runId>/
           cat artifacts.json | jq -c '.[]' | while read artifact; do
             ID=$(echo "$artifact" | jq -r '.id')
             RUN_ID=$(echo "$artifact" | jq -r '.run_id')
             CREATED=$(echo "$artifact" | jq -r '.created_at' | sed 's/[:T]/-/g' | cut -d'.' -f1)
             
-            # Get branch from run metadata
             RUN_DATA=$(gh api /repos/${{ github.repository }}/actions/runs/$RUN_ID)
             BRANCH=$(echo "$RUN_DATA" | jq -r '.head_branch')
 
@@ -90,3 +79,4 @@ jobs:
 
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
+        
