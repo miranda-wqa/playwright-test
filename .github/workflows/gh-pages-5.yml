@@ -1,87 +1,186 @@
-name: Deploy Reports - 2
+name: Deploy Test Reports - 2
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Your Test Workflow Name"]
+    types:
+      - completed
 
 permissions:
   contents: read
   pages: write
   id-token: write
-
-concurrency:
-  group: "deploy-reports"
-  cancel-in-progress: false
+  actions: read
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: \${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
+        
       - name: Setup Pages
         uses: actions/configure-pages@v4
-
-      - name: Download artifacts and generate index
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TARGET_ARTIFACT_NAME: "acceptance-test-results"
+        
+      - name: Create artifacts directory
+        run: mkdir -p _site
+        
+      - name: Setup GitHub CLI
         run: |
+          gh auth setup-git -h github.com
+          gh auth status
+        env:
+          GH_TOKEN: \${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Fetch and process artifacts
+        run: |
+          # Create index files directory structure
           mkdir -p _site
-          REPO="${GITHUB_REPOSITORY}"
-
-          echo "Fetching recent successful runs..."
-          gh api "/repos/${REPO}/actions/runs" --paginate -q \
-            '.workflow_runs[] | select(.conclusion=="success") | {id, head_branch}' \
-            | jq -s 'sort_by(.id) | reverse | .[:10]' \
-            | jq -c '.'[] \
-            | while read -r RUN; do
-              RUN_ID=$(echo "$RUN" | jq -r '.id')
-              BRANCH=$(echo "$RUN" | jq -r '.head_branch')
-              echo "Checking run $RUN_ID for branch $BRANCH..."
-
-              gh api "/repos/${REPO}/actions/runs/${RUN_ID}/artifacts" > artifacts.json
-              ARTIFACT=$(jq -c ".artifacts[] | select(.name == \"${TARGET_ARTIFACT_NAME}\")" artifacts.json)
-
-              if [ ! -z "$ARTIFACT" ]; then
-                ARTIFACT_URL=$(echo "$ARTIFACT" | jq -r '.archive_download_url')
-                mkdir -p "_site/${BRANCH}"
-                echo "Downloading and extracting artifact..."
-                gh api "$ARTIFACT_URL" --method GET > artifact.zip
-                unzip -o artifact.zip -d "_site/${BRANCH}" && rm artifact.zip
-              fi
-            done
-
-          # Generate index.html
-          cat > _site/index.html <<EOF
+          
+          # Create main index.html
+          cat > _site/index.html << 'EOF'
           <!DOCTYPE html>
-          <html><head><meta charset="UTF-8"><title>Acceptance Test Reports</title></head><body>
-          <h1>Acceptance Test Reports</h1>
+          <html>
+          <head>
+            <title>Test Reports</title>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+              body { font-family: Arial, sans-serif; margin: 20px; }
+              h1 { color: #333; }
+              .branch { margin-bottom: 20px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+              h2 { margin-top: 0; }
+            </style>
+          </head>
+          <body>
+            <h1>Test Reports by Branch</h1>
+            <div id="branches"></div>
+            
+            <script>
+              // Will be populated by the script
+              const branchData = [];
+            </script>
           EOF
-
-          find _site -mindepth 1 -maxdepth 1 -type d | while read dir; do
-            BRANCH=$(basename "$dir")
-            echo "<h2>Branch: $BRANCH</h2><ul>" >> _site/index.html
-            for file in "$dir"/*; do
-              NAME=$(basename "$file")
-              echo "<li><a href=\"${BRANCH}/${NAME}\">${NAME}</a></li>" >> _site/index.html
+          
+          # Fetch all artifacts, group by branch and sort
+          artifacts=\$(gh api --paginate /repos/\${{ github.repository }}/actions/artifacts | jq -s '[.[].artifacts[] | select((.name=="acceptance-test-results") and .expired==false)]')
+          
+          # Group artifacts by branch
+          echo "const branchData = " > _site/branch-data.js
+          echo "\$artifacts" | jq 'group_by(.workflow_run.head_branch) | map({branch: .[0].workflow_run.head_branch, runs: . | sort_by(.created_at) | reverse | map({id: .id, workflow_id: .workflow_run.id, created_at: .created_at, url: .archive_download_url})})' >> _site/branch-data.js
+          echo ";" >> _site/branch-data.js
+          
+          # Extract branches
+          branches=\$(echo "\$artifacts" | jq 'group_by(.workflow_run.head_branch) | map(.[0].workflow_run.head_branch)[]' -r)
+          
+          # Process each branch
+          for branch in \$branches; do
+            echo "Processing branch: \$branch"
+            
+            # Create branch directory
+            mkdir -p "_site/\${branch}"
+            
+            # Create branch index.html
+            cat > "_site/\${branch}/index.html" << EOF
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Test Reports for \${branch}</title>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+              body { font-family: Arial, sans-serif; margin: 20px; }
+              h1 { color: #333; }
+              .run { margin-bottom: 15px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+              a { color: #0366d6; text-decoration: none; }
+              a:hover { text-decoration: underline; }
+            </style>
+          </head>
+          <body>
+            <h1>Test Reports for \${branch}</h1>
+            <p><a href="../">Back to all branches</a></p>
+            <div id="runs"></div>
+            
+            <script src="../branch-data.js"></script>
+            <script>
+              const branch = "\${branch}";
+              const branchInfo = branchData.find(b => b.branch === branch);
+              
+              if (branchInfo) {
+                const runsElement = document.getElementById('runs');
+                branchInfo.runs.forEach(run => {
+                  const date = new Date(run.created_at).toLocaleString();
+                  const runElement = document.createElement('div');
+                  runElement.className = 'run';
+                  runElement.innerHTML = \`
+                    <h3>Run ID: \\${run.workflow_id}</h3>
+                    <p>Created: \\${date}</p>
+                    <p><a href="\\${run.workflow_id}/index.html">View Report</a></p>
+                  \`;
+                  runsElement.appendChild(runElement);
+                });
+              } else {
+                document.getElementById('runs').innerHTML = '<p>No runs found for this branch</p>';
+              }
+            </script>
+          </body>
+          </html>
+          EOF
+            
+            # Get artifacts for this branch
+            branch_artifacts=\$(echo "\$artifacts" | jq --arg branch "\$branch" '[.[] | select(.workflow_run.head_branch==\$branch)] | sort_by(.created_at) | reverse')
+            
+            # Download and extract each artifact
+            echo "\$branch_artifacts" | jq -r '.[] | .id' | while read -r artifact_id; do
+              workflow_id=\$(echo "\$branch_artifacts" | jq -r --arg id "\$artifact_id" '.[] | select(.id==(\$id | tonumber)) | .workflow_run.id')
+              
+              echo "Downloading artifact ID: \$artifact_id for workflow: \$workflow_id"
+              mkdir -p "_site/\${branch}/\${workflow_id}"
+              
+              # Download the artifact
+              gh api /repos/\${{ github.repository }}/actions/artifacts/\$artifact_id/zip -H "Accept: application/vnd.github+json" --output artifact.zip
+              
+              # Extract to the correct directory
+              unzip -o artifact.zip -d "_site/\${branch}/\${workflow_id}/"
+              rm artifact.zip
             done
-            echo "</ul>" >> _site/index.html
           done
-
-          echo "</body></html>" >> _site/index.html
-
-      - name: Upload Pages Artifact
+          
+          # Complete main index.html
+          cat >> _site/index.html << 'EOF'
+            <script src="branch-data.js"></script>
+            <script>
+              const branchesElement = document.getElementById('branches');
+              
+              branchData.forEach(branch => {
+                const latestRun = branch.runs[0];
+                const date = new Date(latestRun.created_at).toLocaleString();
+                
+                const branchElement = document.createElement('div');
+                branchElement.className = 'branch';
+                branchElement.innerHTML = `
+                  <h2>\${branch.branch}</h2>
+                  <p>\${branch.runs.length} test run(s)</p>
+                  <p>Latest run: \${date}</p>
+                  <p><a href="\${branch.branch}/index.html">View all runs</a></p>
+                  <p><a href="\${branch.branch}/\${latestRun.workflow_id}/index.html">Latest report</a></p>
+                `;
+                branchesElement.appendChild(branchElement);
+              });
+            </script>
+          </body>
+          </html>
+          EOF
+        env:
+          GH_TOKEN: \${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
-
-  deploy:
-    name: Deploy to GitHub Pages
-    runs-on: ubuntu-latest
-    needs: build
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy
+        
+      - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
