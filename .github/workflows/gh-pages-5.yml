@@ -1,10 +1,11 @@
 name: Deploy Playwright Reports to Pages
 
 on:
-  workflow_dispatch:
   push:
-      branches:
-        - main
+    branches:
+      - main
+  workflow_dispatch:
+
 jobs:
   deploy-reports:
     runs-on: ubuntu-latest
@@ -17,7 +18,10 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install GitHub CLI, jq, and unzip
+      - name: Set up GitHub Pages
+        uses: actions/configure-pages@v4
+
+      - name: Install GitHub CLI, jq, unzip
         run: |
           sudo apt-get update
           sudo apt-get install -y gh jq unzip
@@ -33,11 +37,9 @@ jobs:
             while read artifact; do
               ID=$(echo "$artifact" | jq -r '.id')
               CREATED=$(echo "$artifact" | jq -r '.created_at' | sed 's/[:T]/-/g' | cut -d'.' -f1)
-              RUN_ID=$(echo "$artifact" | jq -r '.workflow_run.id')
+              RUN_ID=$(echo "$artifact" | jq -r '.workflow_run.id // "unknown"')
 
               CREATED=${CREATED:-"unknown-time"}
-              RUN_ID=${RUN_ID:-"unknown-run"}
-
               FOLDER="root-webapp/${CREATED}_run-${RUN_ID}"
               mkdir -p "$FOLDER"
 
@@ -49,15 +51,29 @@ jobs:
 
       - name: Generate index.html
         run: |
-          echo "<html><head><title>Playwright Reports</title></head><body><h1>Playwright Reports</h1>" > root-webapp/index.html
+          echo "<html><head><title>Playwright Reports</title></head><body><h1>Acceptance Test Reports</h1>" > root-webapp/index.html
           for dir in root-webapp/*_run-*; do
             NAME=$(basename "$dir")
             echo "<a href=\"$NAME/index.html\">$NAME</a><br>" >> root-webapp/index.html
           done
           echo "</body></html>" >> root-webapp/index.html
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Upload artifact for deployment
+        uses: actions/upload-pages-artifact@v2
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./root-webapp
+          path: ./root-webapp
+
+  deploy:
+    needs: deploy-reports
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v3
+        
