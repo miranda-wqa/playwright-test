@@ -35,67 +35,85 @@ jobs:
           && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
           && sudo apt update \
           && sudo apt install gh -y
+          
+      - name: Install jq
+        run: sudo apt-get install jq -y
     
-      - name: Fetch Artifacts Data
+      - name: Fetch and Transform Artifacts Data
         id: fetch-artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
         run: |
-          # Fetch the latest 50 non-expired artifacts named 'report-folder'
-          gh api --paginate "/repos/$REPO/actions/artifacts?per_page=100" | \
-          jq -s '[.[].artifacts[] 
-            | select((.name=="report-folder") and (.expired==false))] 
-            | sort_by(.created_at) 
-            | reverse 
-            | .[0:50] 
-            | group_by(.workflow_run.head_branch)' > artifacts.json
+          # Create the directory for the site
+          mkdir -p _site
           
-          # Transform the data to the desired structure
+          # Fetch the latest non-expired artifacts named 'report-folder'
+          # This uses the "magic sauce" jq command your lead provided, slightly modified for the correct artifact name
+          gh api --paginate "/repos/$REPO/actions/artifacts?per_page=100" | \
+          jq -s '[.[].artifacts[] | select((.name=="report-folder") and (.expired==false))]' > all_artifacts.json
+          
+          # Limit to the latest 50 artifacts
+          jq 'sort_by(.created_at) | reverse | .[0:50]' all_artifacts.json > latest_artifacts.json
+          
+          # Group by branch and sort as specified
+          jq 'group_by(.workflow_run.head_branch) | sort_by(.[].id) | reverse' latest_artifacts.json > grouped_artifacts.json
+          
+          # Now transform to the desired structure that your lead wanted
           jq '[.[] | {
             branch: .[0].workflow_run.head_branch,
             workflow_runs: [.[] | {
               workflow_run_id: .workflow_run.id,
-              run_number: .workflow_run.run_number,
               created_at: .created_at,
+              run_number: .workflow_run.run_number,
               artifact_id: .id
             }]
-          }]' artifacts.json > report_structure.json
+          }]' grouped_artifacts.json > _site/report_structure.json
           
-          mkdir -p _site
-          cp report_structure.json _site/
+          # Create a pretty version for debugging
+          jq '.' _site/report_structure.json > _site/report_structure_pretty.json
+          
+          # Output the structure to the logs for debugging
+          echo "Transformed data structure:"
+          cat _site/report_structure_pretty.json
     
       - name: Download Artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
         run: |
-          mkdir -p _site
-          
-          # Process each artifact and download it
-          jq -c '.[]' report_structure.json | while read -r branch_data; do
+          # Process each branch and its workflow runs
+          jq -c '.[]' _site/report_structure.json | while read -r branch_data; do
             branch_name=$(echo $branch_data | jq -r '.branch')
             mkdir -p "_site/$branch_name"
             
+            echo "Processing branch: $branch_name"
+            
+            # Process each workflow run in the branch
             echo $branch_data | jq -c '.workflow_runs[]' | while read -r run_data; do
               run_id=$(echo $run_data | jq -r '.workflow_run_id')
               artifact_id=$(echo $run_data | jq -r '.artifact_id')
               created_at=$(echo $run_data | jq -r '.created_at' | sed 's/:/-/g' | sed 's/Z$//')
               
+              # Create directory using timestamp_runid format
               dir_name="${created_at}_${run_id}"
               mkdir -p "_site/$branch_name/$dir_name"
               
-              # Download the artifact
               echo "Downloading artifact $artifact_id for run $run_id on branch $branch_name"
-              gh api "/repos/$REPO/actions/artifacts/$artifact_id/zip" -H "Accept: application/vnd.github+json" --output "artifact.zip"
               
-              # Extract the artifact to the designated directory
+              # Download and extract the artifact
+              gh api "/repos/$REPO/actions/artifacts/$artifact_id/zip" \
+                -H "Accept: application/vnd.github+json" \
+                --output "artifact.zip"
+              
               unzip -q -o "artifact.zip" -d "_site/$branch_name/$dir_name"
               rm "artifact.zip"
+              
+              echo "Extracted artifact to _site/$branch_name/$dir_name"
             done
           done
     
-      - name: Generate Index.html
+      - name: Generate Index HTML
         run: |
           cat > _site/index.html << 'EOL'
           <!DOCTYPE html>
@@ -118,20 +136,27 @@ jobs:
                 margin-bottom: 30px;
                 color: #0366d6;
               }
+              h2 {
+                color: #0366d6;
+                border-bottom: 1px solid #e1e4e8;
+                padding-bottom: 8px;
+              }
               .branch-section {
-                margin-bottom: 30px;
+                margin-bottom: 40px;
                 border: 1px solid #e1e4e8;
                 border-radius: 6px;
                 overflow: hidden;
               }
               .branch-header {
                 background-color: #f6f8fa;
-                padding: 10px 15px;
+                padding: 12px 15px;
                 font-weight: bold;
+                font-size: 1.1em;
                 border-bottom: 1px solid #e1e4e8;
                 cursor: pointer;
                 display: flex;
                 justify-content: space-between;
+                align-items: center;
               }
               .branch-content {
                 padding: 0;
@@ -163,6 +188,7 @@ jobs:
                 color: #586069;
                 font-size: 0.9em;
                 margin-right: 10px;
+                white-space: nowrap;
               }
               .count-badge {
                 background-color: #0366d6;
@@ -174,11 +200,26 @@ jobs:
               .collapsed .branch-content {
                 display: none;
               }
+              .loading {
+                text-align: center;
+                padding: 40px;
+                font-size: 1.2em;
+                color: #586069;
+              }
+              .chevron {
+                transition: transform 0.3s;
+                margin-left: 8px;
+              }
+              .collapsed .chevron {
+                transform: rotate(-90deg);
+              }
             </style>
           </head>
           <body>
             <h1>Test Report Dashboard</h1>
-            <div id="dashboard"></div>
+            <div id="dashboard">
+              <div class="loading">Loading reports...</div>
+            </div>
             
             <script>
               // Fetch the report structure JSON
@@ -186,6 +227,12 @@ jobs:
                 .then(response => response.json())
                 .then(data => {
                   const dashboard = document.getElementById('dashboard');
+                  dashboard.innerHTML = ''; // Clear loading message
+                  
+                  if (data.length === 0) {
+                    dashboard.innerHTML = '<div class="loading">No reports found</div>';
+                    return;
+                  }
                   
                   // Create sections for each branch
                   data.forEach(branchData => {
@@ -195,10 +242,26 @@ jobs:
                     // Create header for the branch
                     const branchHeader = document.createElement('div');
                     branchHeader.className = 'branch-header';
-                    branchHeader.innerHTML = `
-                      <span>${branchData.branch}</span>
-                      <span class="count-badge">${branchData.workflow_runs.length}</span>
-                    `;
+                    
+                    const nameSpan = document.createElement('span');
+                    nameSpan.textContent = branchData.branch;
+                    
+                    const countBadge = document.createElement('span');
+                    countBadge.className = 'count-badge';
+                    countBadge.textContent = branchData.workflow_runs.length;
+                    
+                    const chevron = document.createElement('span');
+                    chevron.className = 'chevron';
+                    chevron.innerHTML = '▼';
+                    
+                    const headerInfo = document.createElement('div');
+                    headerInfo.appendChild(nameSpan);
+                    headerInfo.appendChild(document.createTextNode(' '));
+                    headerInfo.appendChild(countBadge);
+                    
+                    branchHeader.appendChild(headerInfo);
+                    branchHeader.appendChild(chevron);
+                    
                     branchHeader.addEventListener('click', () => {
                       branchSection.classList.toggle('collapsed');
                     });
@@ -220,12 +283,17 @@ jobs:
                       // Create the URL path from branch name and run id
                       const reportPath = `${branchData.branch}/${run.created_at.replace(/:/g, '-').replace(/Z$/, '')}_${run.workflow_run_id}/`;
                       
-                      runItem.innerHTML = `
-                        <a href="${reportPath}" class="run-link">
-                          Run #${run.run_number} (ID: ${run.workflow_run_id})
-                        </a>
-                        <span class="timestamp">${formattedDate} ${formattedTime}</span>
-                      `;
+                      const runLink = document.createElement('a');
+                      runLink.href = reportPath;
+                      runLink.className = 'run-link';
+                      runLink.textContent = `Run #${run.run_number} (ID: ${run.workflow_run_id})`;
+                      
+                      const timeSpan = document.createElement('span');
+                      timeSpan.className = 'timestamp';
+                      timeSpan.textContent = `${formattedDate} ${formattedTime}`;
+                      
+                      runItem.appendChild(runLink);
+                      runItem.appendChild(timeSpan);
                       
                       branchContent.appendChild(runItem);
                     });
@@ -239,7 +307,7 @@ jobs:
                 .catch(error => {
                   console.error('Error loading report structure:', error);
                   document.getElementById('dashboard').innerHTML = `
-                    <div style="color: red; text-align: center;">
+                    <div style="color: red; text-align: center; padding: 40px;">
                       <p>Error loading report data. Please try again later.</p>
                       <p>Details: ${error.message}</p>
                     </div>
