@@ -2,8 +2,9 @@ name: Deploy Playwright Reports
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 * * * *'  # every hour (optional)
+  push:
+    branches:
+      - main
 
 jobs:
   deploy-reports:
