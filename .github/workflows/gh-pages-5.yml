@@ -1,4 +1,4 @@
-name: Manual Test Reports Deployment
+name: Display Latest Test Reports
 
 on:
   workflow_dispatch:  # Manual trigger
@@ -6,131 +6,142 @@ on:
     branches:
       - main
 
-# Grant permissions
 permissions:
   contents: read
   pages: write
   id-token: write
+  actions: read
+
+# Allow only one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Setup environment
+      - name: Install GitHub CLI
         run: |
-          # Create directories needed
-          mkdir -p site_content
-          cd site_content
-          
-          # Install required tools
-          sudo apt-get update
-          sudo apt-get install -y jq unzip curl
-          
-          # Install GitHub CLI
+          type -p curl >/dev/null || apt install curl -y
           curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
           sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-          sudo apt-get update
-          sudo apt-get install -y gh
-          
-          # Get the repo info
-          REPO="${GITHUB_REPOSITORY}"
+          sudo apt update
+          sudo apt install gh -y
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+      
+      - name: Create site structure
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Create site directory
+          mkdir -p _site
           
           # Fetch artifacts data
-          echo "Fetching artifacts..."
-          gh api --paginate "/repos/${REPO}/actions/artifacts" > artifacts_raw.json
+          echo "Fetching artifacts data..."
+          gh api --paginate "/repos/$REPO/actions/artifacts" > artifacts.json
           
-          # Process artifacts data
-          jq -s '[.[].artifacts[] | select((.name=="report-folder") and (.expired==false))]' artifacts_raw.json > artifacts_filtered.json
-          jq 'sort_by(.created_at) | reverse | .[0:50]' artifacts_filtered.json > artifacts_latest.json
-          jq 'group_by(.workflow_run.head_branch) | sort_by(.[].id) | reverse' artifacts_latest.json > artifacts_grouped.json
-          
-          # Create desired structure
+          # Process with jq to get only non-expired report-folder artifacts, limited to 50
+          jq '[.artifacts[] | select((.name=="report-folder") and (.expired==false))]' artifacts.json > filtered.json
+          jq 'sort_by(.created_at) | reverse | .[0:50]' filtered.json > latest.json
+          jq 'group_by(.workflow_run.head_branch)' latest.json > grouped.json
           jq '[.[] | {
             branch: .[0].workflow_run.head_branch,
             workflow_runs: [.[] | {
               workflow_run_id: .workflow_run.id,
+              run_number: .workflow_run.run_number,
               created_at: .created_at,
               artifact_id: .id
             }]
-          }]' artifacts_grouped.json > report_structure.json
+          }]' grouped.json > _site/reports.json
           
-          # Make a minimal HTML page
-          cat > index.html << 'EOL'
+          # Create a simple index.html
+          cat > _site/index.html << 'EOL'
           <!DOCTYPE html>
           <html>
-          <head><title>Test Reports</title></head>
+          <head>
+            <title>Test Reports</title>
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 20px; }
+              h1 { color: #0366d6; }
+              .branch { margin-bottom: 20px; border: 1px solid #e1e4e8; border-radius: 6px; overflow: hidden; }
+              .branch-header { background-color: #f6f8fa; padding: 10px 15px; font-weight: bold; border-bottom: 1px solid #e1e4e8; }
+              .run { padding: 10px 15px; border-bottom: 1px solid #e1e4e8; display: flex; justify-content: space-between; }
+              .run:last-child { border-bottom: none; }
+              .run:hover { background-color: #f6f8fa; }
+              .timestamp { color: #586069; font-size: 0.9em; }
+            </style>
+          </head>
           <body>
             <h1>Test Reports</h1>
-            <div id="reports">Loading...</div>
+            <div id="content">Loading reports...</div>
+            
             <script>
-              fetch('./report_structure.json')
+              fetch('./reports.json')
                 .then(response => response.json())
                 .then(data => {
-                  let html = '';
+                  const content = document.getElementById('content');
+                  content.innerHTML = '';
+                  
+                  if (data.length === 0) {
+                    content.innerHTML = '<p>No reports found.</p>';
+                    return;
+                  }
+                  
                   data.forEach(branch => {
-                    html += `<h2>Branch: ${branch.branch}</h2><ul>`;
+                    const branchDiv = document.createElement('div');
+                    branchDiv.className = 'branch';
+                    
+                    const branchHeader = document.createElement('div');
+                    branchHeader.className = 'branch-header';
+                    branchHeader.textContent = `Branch: ${branch.branch || 'Unknown'}`;
+                    
+                    branchDiv.appendChild(branchHeader);
+                    
                     branch.workflow_runs.forEach(run => {
-                      const date = new Date(run.created_at).toLocaleString();
-                      html += `<li><a href="${branch.branch}/${run.created_at.replace(/:/g, '-').replace(/Z$/, '')}_${run.workflow_run_id}/">Run ID: ${run.workflow_run_id} (${date})</a></li>`;
+                      const runDiv = document.createElement('div');
+                      runDiv.className = 'run';
+                      
+                      const runLink = document.createElement('a');
+                      runLink.href = `https://github.com/${window.location.pathname.split('/')[1]}/${window.location.pathname.split('/')[2]}/actions/runs/${run.workflow_run_id}`;
+                      runLink.textContent = `Run #${run.run_number || run.workflow_run_id}`;
+                      runLink.target = '_blank';
+                      
+                      const timestamp = document.createElement('span');
+                      timestamp.className = 'timestamp';
+                      timestamp.textContent = new Date(run.created_at).toLocaleString();
+                      
+                      runDiv.appendChild(runLink);
+                      runDiv.appendChild(timestamp);
+                      branchDiv.appendChild(runDiv);
                     });
-                    html += '</ul>';
+                    
+                    content.appendChild(branchDiv);
                   });
-                  document.getElementById('reports').innerHTML = html;
                 })
-                .catch(e => {
-                  document.getElementById('reports').innerHTML = 'Error loading reports: ' + e;
+                .catch(error => {
+                  document.getElementById('content').innerHTML = `<p style="color: red;">Error loading reports: ${error.message}</p>`;
                 });
             </script>
           </body>
           </html>
           EOL
-          
-          # Download artifacts to appropriate directories
-          while read -r branch_data; do
-            branch_name=$(echo "$branch_data" | jq -r '.branch')
-            mkdir -p "$branch_name"
-            
-            echo "Processing branch: $branch_name"
-            
-            while read -r run_data; do
-              run_id=$(echo "$run_data" | jq -r '.workflow_run_id')
-              artifact_id=$(echo "$run_data" | jq -r '.artifact_id')
-              created_at=$(echo "$run_data" | jq -r '.created_at' | sed 's/:/-/g' | sed 's/Z$//')
-              
-              dir_name="${created_at}_${run_id}"
-              mkdir -p "${branch_name}/${dir_name}"
-              
-              echo "Downloading artifact $artifact_id"
-              
-              # FIX: Use curl instead of gh api with --output
-              curl -L -H "Authorization: token $GITHUB_TOKEN" \
-                -H "Accept: application/vnd.github+json" \
-                "https://api.github.com/repos/${REPO}/actions/artifacts/${artifact_id}/zip" \
-                --output artifact.zip
-              
-              unzip -q -o artifact.zip -d "${branch_name}/${dir_name}"
-              rm artifact.zip
-            done < <(echo "$branch_data" | jq -c '.workflow_runs[]')
-          done < <(jq -c '.[]' report_structure.json)
-          
-          # List files for debugging
-          echo "Site structure:"
-          find . -type d | sort
-          
-          # Create tarball for deployment
-          tar -czf ../site.tar.gz *
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Configure and deploy Pages
-        uses: actions/configure-pages@v4
-        
-      - name: Upload artifact
+      - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v2
-        with:
-          path: site.tar.gz
-          
-      - name: Deploy to GitHub Pages  
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v3
         
