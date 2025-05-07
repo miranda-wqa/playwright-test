@@ -58,6 +58,13 @@ jobs:
           done
           echo "</body></html>" >> root-webapp/index.html
 
+      - name: Pre-download upload-artifact@v3
+        uses: actions/upload-artifact@v3
+        with:
+          name: dummy
+          path: ./nonexistent
+          if-no-files-found: ignore
+          
       - name: Upload artifact for deployment
         uses: actions/upload-pages-artifact@v2
         with:
