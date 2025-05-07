@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 
@@ -51,8 +52,34 @@ jobs:
           # Process artifacts with debug output
           echo "Processing artifacts..."
           gh api --paginate /repos/${{ github.repository }}/actions/artifacts | \
-          jq -s 'add | .artifacts[] | select(.name == "report-folder" and .expired == false) | {name, branch: .workflow_run.head_branch, id: .id, archive_download_url}' | \
-          jq -s 'group_by(.branch) | .[] as $branch_group | "<h2>Branch: \($branch_group[0].branch)</h2><ul>" + ($branch_group | map("<li><a href=\"" + .archive_download_url + "\">Artifact #\(.id)</a></li>") | join("")) + "</ul>"' >> artifact-index/index.html
+          jq -s '
+            # Debug: Show what we got from pagination
+            "Pagination response:" |
+            # Combine all pages
+            add as $all |
+            # Debug: Show total artifacts
+            "Total artifacts: \($all.artifacts | length)" |
+            # Filter for report-folder
+            $all.artifacts[] | 
+            select(.name == "report-folder" and .expired == false) |
+            # Debug: Show matching artifacts
+            "Found matching artifact: \(.id) from branch \(.workflow_run.head_branch)" |
+            # Create the object
+            {name, branch: .workflow_run.head_branch, id: .id, archive_download_url}
+          ' | \
+          jq -s '
+            # Debug: Show what we got from first jq
+            "Artifacts after filtering: \(length)" |
+            # Group by branch
+            group_by(.branch) |
+            # Debug: Show branches
+            "Found branches: \(map(.[0].branch) | join(", "))" |
+            # Generate HTML
+            .[] as $branch_group |
+              "<h2>Branch: \($branch_group[0].branch)</h2><ul>" +
+              ($branch_group | map("<li><a href=\"" + .archive_download_url + "\">Artifact #\(.id)</a></li>") | join("")) +
+              "</ul>"
+          ' >> artifact-index/index.html
 
           echo "</body></html>" >> artifact-index/index.html
 
