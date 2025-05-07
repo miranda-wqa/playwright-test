@@ -1,81 +1,48 @@
-name: Deploy Test Reports - 2
+name: Test-2
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
-  pages: write
-  id-token: write
 
 jobs:
-  build:
+  generate-index:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Manually install GitHub CLI
+      - name: Install dependencies
         run: |
-          curl -sSL https://github.com/cli/cli/releases/download/v2.49.0/gh_2.49.0_linux_amd64.tar.gz | tar xz
-          sudo mv gh_2.49.0_linux_amd64/bin/gh /usr/local/bin/
-          gh --version
+          sudo apt-get update
+          sudo apt-get install -y jq
 
-      - name: Set up Pages
-        uses: actions/configure-pages@v4
-
-      - name: Fetch and extract latest artifacts per branch
+      - name: Generate HTML index
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mkdir -p _site
-          REPO="${GITHUB_REPOSITORY}"
+          mkdir -p artifact-index
+          echo "<html><body><h1>Acceptance Test Artifacts</h1>" > artifact-index/index.html
 
-          echo "Fetching all non-expired 'acceptance-test-results' artifacts..."
-          gh api --paginate "/repos/${REPO}/actions/artifacts" \
-            | jq -r '.artifacts[] | select(.name=="acceptance-test-results" and .expired==false) | "\(.workflow_run.head_branch) \(.id) \(.created_at) \(.archive_download_url)"' \
-            | sort -k1,1 -k3,3r \
-            | awk '!seen[$1]++' \
-            | while read -r BRANCH ARTIFACT_ID CREATED_AT DOWNLOAD_URL; do
-                TIMESTAMP=$(date -d "$CREATED_AT" +"%Y%m%d%H%M%S")
-                DEST_DIR="_site/${BRANCH}/${TIMESTAMP}"
-                mkdir -p "$DEST_DIR"
-                echo "Processing artifact for branch '$BRANCH' created at '$CREATED_AT'..."
-                curl -L -H "Authorization: token $GH_TOKEN" "$DOWNLOAD_URL" -o artifact.zip
-                unzip -q artifact.zip -d "$DEST_DIR"
-                rm artifact.zip
-              done
+          gh api --paginate /repos/${{ github.repository }}/actions/artifacts | \
+          jq -r '
+            [.[].artifacts[] | select(.name == "acceptance-test-results" and .expired == false)
+             | {name, branch: .workflow_run.head_branch, id: .id, archive_download_url}]
+            | group_by(.branch)
+            | .[] as $branch_group |
+              "<h2>Branch: \($branch_group[0].branch)</h2><ul>" +
+              ($branch_group | map("<li><a href=\"" + .archive_download_url + "\">Artifact #\(.id)</a></li>") | join("")) +
+              "</ul>"
+          ' >> artifact-index/index.html
 
-      - name: Generate index.html
-        run: |
-          INDEX_FILE="_site/index.html"
-          echo "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Acceptance Test Reports</title></head><body>" > "$INDEX_FILE"
-          echo "<h1>Acceptance Test Reports</h1>" >> "$INDEX_FILE"
-          for BRANCH_DIR in _site/*/; do
-            BRANCH=$(basename "$BRANCH_DIR")
-            echo "<h2>Branch: $BRANCH</h2><ul>" >> "$INDEX_FILE"
-            for REPORT_DIR in "$BRANCH_DIR"*/; do
-              TIMESTAMP=$(basename "$REPORT_DIR")
-              echo "<li><a href='${BRANCH}/${TIMESTAMP}/'>${TIMESTAMP}</a></li>" >> "$INDEX_FILE"
-            done
-            echo "</ul>" >> "$INDEX_FILE"
-          done
-          echo "</body></html>" >> "$INDEX_FILE"
+          echo "</body></html>" >> artifact-index/index.html
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Upload index.html as artifact
+        uses: actions/upload-artifact@v4
         with:
-          path: _site
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          name: acceptance-test-index
+          path: artifact-index/index.html
+          
