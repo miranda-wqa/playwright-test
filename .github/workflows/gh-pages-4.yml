@@ -1,0 +1,144 @@
+name: Deploy Reports Index to Pages
+
+on:
+  workflow_dispatch:
+#   push:
+#     branches: [ main ]
+#     paths:
+#       - 'reports/**'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  actions: read  # Permission to read workflow artifacts
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Fetch artifacts from previous workflow runs
+        id: fetch-artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Create directory for site content
+          mkdir -p _site
+          
+          # Get list of workflow runs for this repository
+          REPO="${GITHUB_REPOSITORY}"
+          WORKFLOW_ID="deploy-reports.yml"  # Replace with your workflow file name
+          
+          # Get workflow runs
+          echo "Fetching workflow runs..."
+          RUNS=$(gh api "/repos/${REPO}/actions/workflows/${WORKFLOW_ID}/runs" \
+                 --paginate -q '.workflow_runs[] | select(.conclusion=="success") | {id: .id, name: .name, created_at: .created_at, html_url: .html_url}')
+          
+          # Start the HTML file
+          cat > _site/index.html << EOL
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Report Index</title>
+            <style>
+              body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+              table { width: 100%; border-collapse: collapse; }
+              th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+              th { background-color: #f2f2f2; }
+            </style>
+          </head>
+          <body>
+            <h1>Reports Index</h1>
+            <table>
+              <tr>
+                <th>Report Date</th>
+                <th>Run ID</th>
+                <th>Links</th>
+              </tr>
+          EOL
+          
+          # For each run, get artifacts and add to index
+          echo "Processing runs and artifacts..."
+          echo "$RUNS" | jq -c '.' | while read -r RUN; do
+            RUN_ID=$(echo $RUN | jq -r '.id')
+            CREATED_AT=$(echo $RUN | jq -r '.created_at' | cut -d'T' -f1)
+            HTML_URL=$(echo $RUN | jq -r '.html_url')
+            
+            # Get artifacts for this run
+            ARTIFACTS=$(gh api "/repos/${REPO}/actions/runs/${RUN_ID}/artifacts" \
+                        -q '.artifacts[] | {id: .id, name: .name, url: .archive_download_url}')
+            
+            # Add this run to the index
+            cat >> _site/index.html << EOL
+              <tr>
+                <td>${CREATED_AT}</td>
+                <td><a href="${HTML_URL}" target="_blank">${RUN_ID}</a></td>
+                <td>
+            EOL
+            
+            # Add artifacts to the run entry
+            if [ ! -z "$ARTIFACTS" ]; then
+              echo "$ARTIFACTS" | jq -c '.' | while read -r ARTIFACT; do
+                ARTIFACT_NAME=$(echo $ARTIFACT | jq -r '.name')
+                
+                # Generate link to view the artifact if it's HTML
+                REPORT_URL="./reports/${RUN_ID}/${ARTIFACT_NAME}"
+                
+                echo "  <a href='${REPORT_URL}' target='_blank'>${ARTIFACT_NAME}</a><br>" >> _site/index.html
+                
+                # Download and extract the artifact to make it accessible
+                ARTIFACT_ID=$(echo $ARTIFACT | jq -r '.id')
+                ARTIFACT_URL=$(echo $ARTIFACT | jq -r '.url')
+                
+                mkdir -p "_site/reports/${RUN_ID}"
+                
+                # Download the artifact
+                gh api "$ARTIFACT_URL" --method GET --raw-field "Accept=application/vnd.github+json" \
+                   > "artifact.zip"
+                
+                # Extract to the appropriate directory
+                unzip -o "artifact.zip" -d "_site/reports/${RUN_ID}/${ARTIFACT_NAME}"
+                rm "artifact.zip"
+              done
+            else
+              echo "  No artifacts" >> _site/index.html
+            fi
+            
+            # Close the table cell and row
+            cat >> _site/index.html << EOL
+                </td>
+              </tr>
+          EOL
+          done
+          
+          # Finish the HTML file
+          cat >> _site/index.html << EOL
+            </table>
+          </body>
+          </html>
+          EOL
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        
