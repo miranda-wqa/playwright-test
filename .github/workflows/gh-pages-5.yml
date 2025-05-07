@@ -18,18 +18,24 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-
-      - name: Authenticate GitHub CLI
-        run: gh auth setup-git && echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
+    
       - name: Install tools
         run: |
           sudo apt-get update
           sudo apt-get install jq unzip -y
           gh auth setup-git
 
+      - name: Fetch non-expired artifacts
+        run: |
+          gh api --paginate /repos/${{ github.repository }}/actions/artifacts | \
+          jq -s '[.[].artifacts[] 
+            | select((.name=="report-folder") and (.expired==false))] 
+            | group_by(.workflow_run.head_branch) 
+            | sort_by(.[].id) 
+            | reverse'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
       - name: Fetch and extract artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
