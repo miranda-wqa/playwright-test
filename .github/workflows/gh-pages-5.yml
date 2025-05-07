@@ -30,9 +30,9 @@ jobs:
           echo "<html><body><h1>Acceptance Test Artifacts</h1>" > artifact-index/index.html
 
           gh api --paginate /repos/${{ github.repository }}/actions/artifacts | \
-          jq -r '
+          jq -s -r '
             [.[].artifacts[] | select(.name == "acceptance-test-results" and .expired == false)
-             | {name, branch: .workflow_run.head_branch, id: .id, archive_download_url}]
+            | {name, branch: .workflow_run.head_branch, id: .id, archive_download_url}]
             | group_by(.branch)
             | .[] as $branch_group |
               "<h2>Branch: \($branch_group[0].branch)</h2><ul>" +
