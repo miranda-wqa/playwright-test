@@ -52,18 +52,29 @@ jobs:
             RUN_ID=$(echo "$artifact" | jq -r '.run_id')
             CREATED=$(echo "$artifact" | jq -r '.created_at' | sed 's/[:T]/-/g' | cut -d'.' -f1)
 
-            RUN_DATA=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-              https://api.github.com/repos/miranda-wqa/playwright-test/actions/runs/$RUN_ID)
+            # Debugging outputs
+            echo "RUN_ID: $RUN_ID"
+            echo "CREATED: $CREATED"
+
+            RUN_DATA=$(gh api /repos/${{ github.repository }}/actions/runs/$RUN_ID)
+            echo "RUN_DATA: $RUN_DATA"
             BRANCH=$(echo "$RUN_DATA" | jq -r '.head_branch')
 
-            FOLDER="root-webapp/${BRANCH}/${CREATED}_run-${RUN_ID}"
-            mkdir -p "$FOLDER"
-
-            DOWNLOAD_URL=$(echo "$artifact" | jq -r '.archive_download_url')
-            curl -L -H "Authorization: token $GITHUB_TOKEN" "$DOWNLOAD_URL" -o tmp.zip
-
-            unzip -q tmp.zip -d "$FOLDER"
-            rm tmp.zip
+            # Debugging the branch extraction
+            echo "BRANCH: $BRANCH"
+            
+            if [ "$RUN_ID" != "null" ] && [ "$BRANCH" != "null" ]; then
+              FOLDER="root-webapp/${BRANCH}/${CREATED}_run-${RUN_ID}"
+              mkdir -p "$FOLDER"
+              
+              DOWNLOAD_URL=$(echo "$artifact" | jq -r '.archive_download_url')
+              curl -L -H "Authorization: token $GITHUB_TOKEN" "$DOWNLOAD_URL" -o tmp.zip
+            
+              unzip -q tmp.zip -d "$FOLDER"
+              rm tmp.zip
+            else
+              echo "Skipping artifact with null RUN_ID or BRANCH."
+            fi
           done
 
           REPORT_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/${BRANCH}/${FOLDER}/index.html"
