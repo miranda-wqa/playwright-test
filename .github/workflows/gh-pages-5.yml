@@ -5,6 +5,10 @@ on:
   push:
     branches:
       - main
+  workflow_run:
+    workflows: ["gh-pages-5.yml"]
+    types:
+      - completed
 
 permissions:
   contents: read
@@ -12,38 +16,47 @@ permissions:
   id-token: write
   actions: read
 
+# Allow only one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
 jobs:
-  fetch-reports:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v4
-      
-      - name: Fetch and Process Artifacts
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Install GitHub CLI
         run: |
-          # Create site directory
-          mkdir -p _site
-          
-          # Install GitHub CLI
           curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
           sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
           sudo apt update
           sudo apt install gh -y
+
+      - name: Fetch and Process Artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Create site directory
+          mkdir -p _site
           
-          # Fetch artifacts using the "magic sauce" command
+          # Use the "magic sauce" to fetch artifacts
           echo "Fetching artifacts data..."
           gh api --paginate "/repos/$REPO/actions/artifacts" | \
-          jq -s '[.[].artifacts[] | select((.name=="report-folder") and (.expired==false))]' > filtered_artifacts.json
+          jq -s '[.[].artifacts[] | select((.name=="report-folder") and (.expired==false))]' > all_artifacts.json
           
-          # Limit to latest 50 and sort
-          jq 'sort_by(.created_at) | reverse | .[0:50]' filtered_artifacts.json > latest_artifacts.json
+          # Get the latest 50 artifacts
+          jq 'sort_by(.created_at) | reverse | .[0:50]' all_artifacts.json > latest_artifacts.json
           
-          # Group by branch
-          jq 'group_by(.workflow_run.head_branch)' latest_artifacts.json > grouped_artifacts.json
+          # Group by branch as specified in the example
+          jq 'group_by(.workflow_run.head_branch) | sort_by(.[].id) | reverse' latest_artifacts.json > grouped_artifacts.json
           
           # Transform to the desired structure
           jq '[.[] | {
@@ -55,7 +68,66 @@ jobs:
             }]
           }]' grouped_artifacts.json > _site/report_structure.json
           
-          # Download and organize artifacts
+          # Create a simple index.html for navigation
+          cat > _site/index.html << 'EOL'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Test Reports</title>
+            <style>
+              body { font-family: sans-serif; margin: 20px; }
+              h1 { color: #0366d6; text-align: center; }
+              .branch { margin-bottom: 20px; border: 1px solid #ddd; padding: 10px; border-radius: 5px; }
+              .branch-header { font-weight: bold; font-size: 16px; margin-bottom: 10px; }
+              .run-link { display: block; padding: 5px; margin: 2px 0; text-decoration: none; }
+              .run-link:hover { background-color: #f0f0f0; }
+            </style>
+          </head>
+          <body>
+            <h1>Test Reports</h1>
+            <div id="content">Loading reports...</div>
+            
+            <script>
+              fetch('./report_structure.json')
+                .then(response => response.json())
+                .then(data => {
+                  const content = document.getElementById('content');
+                  content.innerHTML = '';
+                  
+                  data.forEach(branch => {
+                    const branchDiv = document.createElement('div');
+                    branchDiv.className = 'branch';
+                    
+                    const branchHeader = document.createElement('div');
+                    branchHeader.className = 'branch-header';
+                    branchHeader.textContent = 'Branch: ' + branch.branch;
+                    
+                    branchDiv.appendChild(branchHeader);
+                    
+                    branch.workflow_runs.forEach(run => {
+                      const date = new Date(run.created_at).toLocaleString();
+                      const runId = run.workflow_run_id;
+                      
+                      const link = document.createElement('a');
+                      link.className = 'run-link';
+                      link.href = `${branch.branch}/${run.created_at.replace(/:/g, '-').replace(/Z$/, '')}_${runId}/`;
+                      link.textContent = `Run ID: ${runId} - ${date}`;
+                      
+                      branchDiv.appendChild(link);
+                    });
+                    
+                    content.appendChild(branchDiv);
+                  });
+                })
+                .catch(error => {
+                  document.getElementById('content').innerHTML = 'Error loading data: ' + error.message;
+                });
+            </script>
+          </body>
+          </html>
+          EOL
+          
+          # Process and download each artifact
           echo "Downloading artifacts..."
           jq -c '.[]' _site/report_structure.json | while read -r branch_data; do
             branch_name=$(echo $branch_data | jq -r '.branch')
@@ -73,24 +145,32 @@ jobs:
               
               echo "Downloading artifact $artifact_id for run $run_id"
               
-              # Download and extract the artifact
+              # Download the artifact zip
               gh api "/repos/$REPO/actions/artifacts/$artifact_id/zip" \
                 -H "Accept: application/vnd.github+json" \
                 --output "artifact.zip"
               
+              # Extract to the directory
               unzip -q -o "artifact.zip" -d "_site/$branch_name/$dir_name"
               rm "artifact.zip"
             done
           done
           
-          # Create a simple placeholder index.html
-          echo "<html><body><h1>Test Reports</h1><p>Reports fetched and organized.</p></body></html>" > _site/index.html
-          
-          # Show the directory structure
-          echo "Created site structure:"
+          # Show directory structure
+          echo "Created directory structure:"
           find _site -type d | sort
-      
-      - uses: actions/upload-pages-artifact@v2
-      
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
       - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v3
+        
