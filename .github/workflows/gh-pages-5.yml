@@ -22,121 +22,26 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
-      - name: Install GitHub CLI and jq
+      - name: Create simple site
         run: |
-          # Install GitHub CLI
-          type -p curl >/dev/null || apt install curl -y
-          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
-          && sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
-          && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
-          && sudo apt update \
-          && sudo apt install gh -y
-          
-          # Make sure jq is installed
-          sudo apt-get install jq -y
-
-      - name: Build Pages
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-        run: |
-          # Create the site directory
+          # Create a minimal site
           mkdir -p _site
           
-          # Fetch non-expired artifacts named 'report-folder'
-          echo "Fetching artifacts data..."
-          gh api --paginate "/repos/$REPO/actions/artifacts?per_page=100" > artifacts_api_response.json
-          
-          # Process with jq to get the data structure we want
-          cat artifacts_api_response.json | jq '[.artifacts[] | select((.name=="report-folder") and (.expired==false))]' > filtered_artifacts.json
-          
-          # Limit to latest 50 and sort
-          cat filtered_artifacts.json | jq 'sort_by(.created_at) | reverse | .[0:50]' > latest_artifacts.json
-          
-          # Group by branch and transform to desired format
-          cat latest_artifacts.json | jq 'group_by(.workflow_run.head_branch) | map({
-            branch: .[0].workflow_run.head_branch,
-            workflow_runs: map({
-              workflow_run_id: .workflow_run.id,
-              created_at: .created_at,
-              artifact_id: .id
-            })
-          })' > _site/report_structure.json
-          
-          # Create simple HTML for viewing the data
+          # Create a simple index.html file
           cat > _site/index.html << 'EOL'
           <!DOCTYPE html>
           <html>
           <head>
-            <title>Test Reports</title>
-            <style>
-              body { font-family: sans-serif; margin: 20px; }
-              h1 { color: #0366d6; }
-              .branch { margin-bottom: 20px; border: 1px solid #ddd; padding: 10px; border-radius: 5px; }
-              .branch-name { font-weight: bold; font-size: 1.2em; margin-bottom: 10px; }
-              ul { padding-left: 20px; }
-              li { margin-bottom: 5px; }
-            </style>
+            <title>Test Page</title>
           </head>
           <body>
-            <h1>Test Reports</h1>
-            <div id="content">Loading reports...</div>
-            
-            <script>
-              fetch('./report_structure.json')
-                .then(response => response.json())
-                .then(data => {
-                  const content = document.getElementById('content');
-                  
-                  if (!data || data.length === 0) {
-                    content.innerHTML = '<p>No reports found.</p>';
-                    return;
-                  }
-                  
-                  content.innerHTML = '';
-                  
-                  data.forEach(branch => {
-                    const branchDiv = document.createElement('div');
-                    branchDiv.className = 'branch';
-                    
-                    const branchName = document.createElement('div');
-                    branchName.className = 'branch-name';
-                    branchName.textContent = branch.branch || 'Unknown Branch';
-                    
-                    const runsList = document.createElement('ul');
-                    
-                    (branch.workflow_runs || []).forEach(run => {
-                      const runItem = document.createElement('li');
-                      const date = new Date(run.created_at).toLocaleString();
-                      runItem.textContent = `Run ID: ${run.workflow_run_id} (${date})`;
-                      runsList.appendChild(runItem);
-                    });
-                    
-                    branchDiv.appendChild(branchName);
-                    branchDiv.appendChild(runsList);
-                    content.appendChild(branchDiv);
-                  });
-                })
-                .catch(error => {
-                  document.getElementById('content').innerHTML = `
-                    <p style="color: red;">Error loading data: ${error.message}</p>
-                    <p>Please try again later or check the workflow logs.</p>
-                  `;
-                });
-            </script>
+            <h1>Test Page</h1>
+            <p>This is a test page to verify GitHub Pages deployment works.</p>
           </body>
           </html>
           EOL
-          
-          # Create a dummy file to ensure there's something in the site directory
-          echo "# Test Reports" > _site/README.md
-          
-          # List the files we created
-          echo "Files created in _site directory:"
-          ls -la _site/
 
-      # Use actions/upload-pages-artifact@v2 which is already available
-      - name: Upload artifact
+      - name: Upload pages artifact
         uses: actions/upload-pages-artifact@v2
 
   deploy:
@@ -149,3 +54,5 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v3
+
+        
