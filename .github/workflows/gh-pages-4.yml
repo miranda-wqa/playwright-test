@@ -2,8 +2,8 @@ name: Deploy Reports Index to Pages
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ main ]
+#   push:
+#     branches: [ main ]
 
 permissions:
   contents: read
@@ -92,8 +92,9 @@ jobs:
               ARTIFACT_URL=$(echo "$TARGET_ARTIFACT" | jq -r '.archive_download_url')
               
               # Create directory for this report
-              REPORT_DIR="_site/reports/${RUN_ID}"
-              mkdir -p "$REPORT_DIR"
+              FOLDER_NAME="$(TZ="America/New_York" date -d "$CREATED_AT" +'%Y-%m-%d_%H-%M-%S')_${RUN_ID}"
+                REPORT_DIR="_site/reports/${FOLDER_NAME}"
+                mkdir -p "$REPORT_DIR"
               
               # Download the artifact
               echo "Downloading artifact ID: $ARTIFACT_ID"
@@ -109,7 +110,7 @@ jobs:
                 rm "artifact.zip"
                 
                 # Add this run to the index
-                REPORT_URL="./reports/${RUN_ID}"
+                REPORT_URL="./reports/${FOLDER_NAME}"
                 cat >> _site/index.html << EOL
                 <tr>
                   <td>${CREATED_AT}</td>
