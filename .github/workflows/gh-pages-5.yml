@@ -2,10 +2,6 @@ name: Deploy Test Reports - 2
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows: ["Your Test Workflow Name"]
-    types:
-      - completed
 
 permissions:
   contents: read
