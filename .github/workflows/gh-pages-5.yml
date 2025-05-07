@@ -49,7 +49,8 @@ jobs:
             RUN_ID=$(echo "$artifact" | jq -r '.run_id')
             CREATED=$(echo "$artifact" | jq -r '.created_at' | sed 's/[:T]/-/g' | cut -d'.' -f1)
             
-            RUN_DATA=$(gh api /repos/${{ github.repository }}/actions/runs/$RUN_ID)
+            RUN_DATA=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            https://api.github.com/repos/miranda-wqa/playwright-test/actions/runs/$RUN_ID)
             BRANCH=$(echo "$RUN_DATA" | jq -r '.head_branch')
 
             FOLDER="root-webapp/${BRANCH}/${CREATED}_run-${RUN_ID}"
