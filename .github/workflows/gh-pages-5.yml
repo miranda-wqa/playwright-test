@@ -13,171 +13,71 @@ permissions:
   id-token: write
 
 jobs:
-  build:
+  deploy-reports:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install jq unzip -y
+          gh auth setup-git
 
-      - name: Download and Organize Reports
+      - name: Fetch and extract artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Create base directory
-          mkdir -p artifact-index/reports
+          mkdir -p root-webapp
           
-          # Fetch all artifacts
-          echo "Fetching artifacts..."
-          gh api --paginate /repos/${{ github.repository }}/actions/artifacts > raw_artifacts.json
-          
-          # Debug: Show raw API response
-          echo "Raw API response:"
-          cat raw_artifacts.json
-          
-          # Debug: Check if we have any artifacts
-          echo "Checking for artifacts..."
-          jq '.artifacts | length' raw_artifacts.json
-          
-          # Debug: List all artifact names
-          echo "Artifact names found:"
-          jq '.artifacts[].name' raw_artifacts.json
-          
-          # Debug: Show full artifact details
-          echo "Full artifact details:"
-          jq '.artifacts[] | {name, expired, workflow_run: .workflow_run.head_branch}' raw_artifacts.json
-          
-          # Download and organize artifacts
-          echo "Downloading and organizing artifacts..."
+          # Get latest 50 artifacts named 'report-folder' from 'gh-pages-5.yml'
           gh api --paginate /repos/${{ github.repository }}/actions/artifacts | \
-          jq -s '
-            add | 
-            .artifacts[] | 
-            select(.name == "report-folder" and .expired == false) | 
-            {
-              branch: .workflow_run.head_branch,
-              run_number: .workflow_run.run_number,
-              run_id: .workflow_run.id,
-              created_at: .created_at,
-              download_url: .archive_download_url
-            }
-          ' > filtered_artifacts.json
-          
-          # Debug: Show filtered artifacts
-          echo "Filtered artifacts to download:"
-          cat filtered_artifacts.json
-          
-          # Process each artifact
-          jq -r '.[] | "\(.branch) \(.run_number) \(.run_id) \(.created_at) \(.download_url)"' filtered_artifacts.json | \
-          while read branch run_number run_id created_at url; do
-            echo "Processing artifact for branch $branch, run $run_number..."
-            echo "Download URL: $url"
-            
-            # Create directory for this run
-            run_dir="artifact-index/reports/$branch/$run_number"
-            mkdir -p "$run_dir"
-            
-            # Download the artifact
-            echo "Downloading report..."
-            curl -L -H "Authorization: token $GH_TOKEN" "$url" > "$run_dir/report.zip"
-            
-            # Debug: Check if download was successful
-            echo "Download size:"
-            ls -l "$run_dir/report.zip"
-            
-            # Extract the report
-            echo "Extracting report..."
-            unzip -l "$run_dir/report.zip"
-            unzip -o "$run_dir/report.zip" -d "$run_dir"
-            
-            # Debug: Check extracted contents
-            echo "Extracted contents:"
-            ls -la "$run_dir"
-            
-            # Clean up the zip file
-            rm "$run_dir/report.zip"
-            
-            # Create a metadata file
-            echo "{
-              \"branch\": \"$branch\",
-              \"run_number\": \"$run_number\",
-              \"run_id\": \"$run_id\",
-              \"created_at\": \"$created_at\"
-            }" > "$run_dir/metadata.json"
-          done
-          
-          # Debug: Show final directory structure
-          echo "Final directory structure:"
-          find artifact-index -type d
-          echo "Contents of reports directory:"
-          ls -la artifact-index/reports
+          jq -r '[.artifacts[] 
+            | select(.name == "report-folder" and .expired == false)
+            | {id, name, created_at, archive_download_url, run_id}] 
+            | sort_by(.created_at) 
+            | reverse 
+            | .[:50]' > artifacts.json
 
-      - name: Generate Index Page
+          # For each artifact: download, extract to folder: root-webapp/<branch>/<timestamp-runId>/
+          cat artifacts.json | jq -c '.[]' | while read artifact; do
+            ID=$(echo "$artifact" | jq -r '.id')
+            RUN_ID=$(echo "$artifact" | jq -r '.run_id')
+            CREATED=$(echo "$artifact" | jq -r '.created_at' | sed 's/[:T]/-/g' | cut -d'.' -f1)
+            
+            # Get branch from run metadata
+            RUN_DATA=$(gh api /repos/${{ github.repository }}/actions/runs/$RUN_ID)
+            BRANCH=$(echo "$RUN_DATA" | jq -r '.head_branch')
+
+            FOLDER="root-webapp/${BRANCH}/${CREATED}_run-${RUN_ID}"
+            mkdir -p "$FOLDER"
+            
+            gh api -H "Accept: application/vnd.github.v3+json" \
+              /repos/${{ github.repository }}/actions/artifacts/$ID/zip -q > tmp.zip
+
+            unzip -q tmp.zip -d "$FOLDER"
+            rm tmp.zip
+          done
+
+      - name: Generate index.html
         run: |
-          # Create index page with styling
-          cat > artifact-index/index.html << 'EOF'
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <title>Acceptance Test Reports</title>
-            <style>
-              body { font-family: Arial, sans-serif; margin: 20px; }
-              h1 { color: #333; }
-              h2 { color: #666; margin-top: 20px; }
-              ul { list-style-type: none; padding: 0; }
-              li { margin: 10px 0; }
-              a { color: #0366d6; text-decoration: none; }
-              a:hover { text-decoration: underline; }
-              .run-info { color: #666; font-size: 0.9em; }
-            </style>
-          </head>
-          <body>
-            <h1>Acceptance Test Reports</h1>
-          EOF
-
-          # Generate index content based on directory structure
-          for branch_dir in artifact-index/reports/*/; do
-            branch=$(basename "$branch_dir")
-            echo "<h2>Branch: $branch</h2><ul>" >> artifact-index/index.html
-            
-            # Sort runs by run number in descending order
-            for run_dir in $(ls -v -r "$branch_dir"); do
-              if [ -f "$branch_dir/$run_dir/metadata.json" ]; then
-                run_number=$(jq -r '.run_number' "$branch_dir/$run_dir/metadata.json")
-                run_id=$(jq -r '.run_id' "$branch_dir/$run_dir/metadata.json")
-                created_at=$(jq -r '.created_at' "$branch_dir/$run_dir/metadata.json")
-                
-                echo "<li>" >> artifact-index/index.html
-                echo "<a href=\"reports/$branch/$run_dir/index.html\">Run #$run_number</a> " >> artifact-index/index.html
-                echo "<span class=\"run-info\">(ID: $run_id, Created: $created_at)</span>" >> artifact-index/index.html
-                echo "</li>" >> artifact-index/index.html
-              fi
+          echo "<html><body><h1>Acceptance Test Reports</h1>" > root-webapp/index.html
+          for branch in $(ls root-webapp); do
+            [ "$branch" == "index.html" ] && continue
+            echo "<h2>$branch</h2><ul>" >> root-webapp/index.html
+            for report in $(ls root-webapp/$branch); do
+              echo "<li><a href=\"./$branch/$report/index.html\">$report</a></li>" >> root-webapp/index.html
             done
-            
-            echo "</ul>" >> artifact-index/index.html
+            echo "</ul>" >> root-webapp/index.html
           done
+          echo "</body></html>" >> root-webapp/index.html
 
-          echo "</body></html>" >> artifact-index/index.html
-          
-          # Debug: Show the generated HTML
-          echo "Generated HTML:"
-          cat artifact-index/index.html
-
-      - name: Upload Pages Artifact
+      - name: Upload pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: artifact-index
+          path: root-webapp
 
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    steps:
       - name: Deploy to GitHub Pages
-        id: deployment
         uses: actions/deploy-pages@v4
+        
