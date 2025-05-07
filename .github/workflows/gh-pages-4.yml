@@ -37,12 +37,12 @@ jobs:
           
           # Get list of workflow runs for this repository
           REPO="${GITHUB_REPOSITORY}"
-          WORKFLOW_ID="deploy-reports.yml"  # Replace with your workflow file name
+          WORKFLOW_ID="gh-pages-3.yml"  # Replace with your workflow file name
           
           # Get workflow runs
           echo "Fetching workflow runs..."
-          RUNS=$(gh api "/repos/${REPO}/actions/workflows/${WORKFLOW_ID}/runs" \
-                 --paginate -q '.workflow_runs[] | select(.conclusion=="success") | {id: .id, name: .name, created_at: .created_at, html_url: .html_url}')
+          RUNS=$(gh api "/repos/${REPO}/actions/runs" \
+            --paginate -q '.workflow_runs[] | select(.conclusion=="success") | {id: .id, name: .name, created_at: .created_at, html_url: .html_url}')
           
           # Start the HTML file
           cat > _site/index.html << EOL
