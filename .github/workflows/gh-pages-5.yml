@@ -66,7 +66,7 @@ jobs:
             rm tmp.zip
           done
 
-          REPORT_URL="https://$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/$BRANCH/$FOLDER/index.html"
+          REPORT_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/${BRANCH}/${FOLDER}/index.html"
           echo "<h2>$BRANCH - $CREATED</h2><a href=\"$REPORT_URL\">View Report</a><br>" >> $GITHUB_STEP_SUMMARY
 
       - name: Generate index.html
