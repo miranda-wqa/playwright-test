@@ -1,10 +1,13 @@
+
+# trying with github actions
+
 name: Deploy Playwright Reports to GitHub Pages
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
+  # push:
+  #   branches:
+  #     - main
 
 jobs:
   deploy-reports:
@@ -83,4 +86,3 @@ jobs:
           git commit -m "Deploy Playwright reports"
           git push --force origin gh-pages
 
-          
